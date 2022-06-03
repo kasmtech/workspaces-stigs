@@ -145,18 +145,18 @@ fi
 
 # can be configured as docker daemon argument
 if ps -ef | grep dockerd | grep --quiet 'userland-proxy'; then
-  echo "V-235789 FAIL, Remove userland-proxy flag from docker service arguments, use /etc/docker/daemon.json."
+  echo "V-235791 FAIL, Remove userland-proxy flag from docker service arguments, use /etc/docker/daemon.json."
   exit 1
 fi
 # can be configured in daemon.json
 if grep --quiet -Pi '"userland-proxy"\s*:\s*false' /etc/docker/daemon.json ; then
-  echo "V-235789 PASS, userland-proxy is disabled."
+  echo "V-235791 PASS, userland-proxy is disabled."
 else
   if which jq ; then
     cat <<< $(sudo jq '. |= . + {"userland-proxy": false}' /etc/docker/daemon.json) > /etc/docker/daemon.json
-    echo "V-235789 PASS, userland-proxy has been disabled by this script, be sure to restart the docker service."
+    echo "V-235791 PASS, userland-proxy has been disabled by this script, be sure to restart the docker service."
   else
-    echo "V-235789 FAIL, userland-proxy is not explicitly disabled, unable to fix, jq package not installed."
+    echo "V-235791 FAIL, userland-proxy is not explicitly disabled, unable to fix, jq package not installed."
 	echo "TIP: add '\"userland-proxy\": false' to /etc/docker/daemon.json and restart the docker service"
     exit 1
   fi
