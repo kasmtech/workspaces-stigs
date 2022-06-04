@@ -157,19 +157,9 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/curren
   else
     log_na "V-235861" "SSL cert does not exist"
   fi
+  chown -R kasm:kasm "/opt/kasm/current/certs/docker"
+  log_succes "V-235830" "client certs are owned by kasm user"
 fi
-
-# Force user mode on all containers V-235830
-#USEROUT=$(/opt/kasm/bin/utils/yq_$(uname -m) '.services[].user' /opt/kasm/current/docker/docker-compose.yaml)
-#KUID=$(id -u kasm)
-#if [[ ! "${USEROUT}" == *"${KUID}"* ]]; then
-#  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services[].user = "'${KUID}'"' /opt/kasm/current/docker/docker-compose.yaml
-#  /opt/kasm/bin/stop
-#  /opt/kasm/bin/start
-#  echo "V-235830 Containers are now running as the kasm user"
-#else
-#  echo "V-235830 Containers are running as the kasm user"
-#fi
 
 # RO containers V-235808
 
@@ -188,7 +178,7 @@ fi
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [ ! -d "/opt/kasm/current/cache/nginx" ]; then
   mkdir -p /opt/kasm/current/cache/nginx
   chown -R kasm:kasm /opt/kasm/current/cache
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.proxy.volumes += "/opt/kasm/current/cache/nginx:/var/cache/nginx" | .services.proxy += {"read_only": true} | .services.proxy += {"tmpfs": ["/var/run"]}' /opt/kasm/current/docker/docker-compose.yaml
+  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.proxy.volumes += "/opt/kasm/current/cache/nginx:/var/cache/nginx" | .services.proxy += {"read_only": true} | .services.proxy += {"tmpfs": ["/var/run:uid='${KUID}',gid='${KUID}'"]}' /opt/kasm/current/docker/docker-compose.yaml
   RESTART_CONTAINERS="true"
   log_succes "V-235808" "proxy is read only"
 else
@@ -255,10 +245,17 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy' /opt/kasm/current/doc
     fi
 fi
 
-if docker ps | grep -viP --quiet '(\(health|CONTAINER ID)' ; then
-  log_failure 'V-235827' 'Containers found without health checks'
+# Force user mode on all containers V-235830
+USEROUT=$(/opt/kasm/bin/utils/yq_$(uname -m) '.services[].user' /opt/kasm/current/docker/docker-compose.yaml)
+KUID=$(id -u kasm)
+if [[ ! "${USEROUT}" == *"${KUID}"* ]]; then
+  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services[].user = "'${KUID}'"' /opt/kasm/current/docker/docker-compose.yaml
+  RESTART_CONTAINERS="true"
+  chown -R kasm:kasm /opt/kasm/current/log
+  chown -R kasm:kasm /opt/kasm/current/certs
+  log_succes "V-235830" "Containers set to run as kasm user ${KUID}"
 else
-  log_succes 'V-235827' 'All running containers have health checks'
+  log_succes "V-235830" "Containers set to run as kasm user ${KUID}"
 fi
 
 #### Restart containers if flagged ####
@@ -266,4 +263,11 @@ if [ "${RESTART_CONTAINERS}" == "true" ]; then
   echo "Restaring containers with new compose changes"
   /opt/kasm/bin/stop
   /opt/kasm/bin/start
+fi
+
+#### Make sure containers are running with a health check
+if docker ps | grep -viP --quiet '(\(health|CONTAINER ID)' ; then
+  log_failure 'V-235827' 'Containers found without health checks'
+else
+  log_succes 'V-235827' 'All running containers have health checks'
 fi
