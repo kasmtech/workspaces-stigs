@@ -154,12 +154,12 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/curren
 
   if [ -f "$DOCKER_SSL_CA" ] ; then
     chown root:root $DOCKER_SSL_CA
-    log_succes "V-235861" "$DOCKER_SSL_CA owned by root:root"
+    log_succes "V-235859" "$DOCKER_SSL_CA owned by root:root"
   else
     log_na "V-235861" "SSL cert does not exist"
   fi
   chown -R kasm:kasm "/opt/kasm/current/certs/docker"
-  log_succes "V-235830" "client certs are owned by kasm user"
+  log_succes "V-235859" "client certs are owned by kasm user"
 fi
 
 # RO containers V-235808
