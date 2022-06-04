@@ -12,6 +12,7 @@ CON_RED='\033[0;31m'
 CON_GREEN='\033[0;32m'
 CON_ORANGE='\033[0;33m'
 CON_NC='\033[0m' # No Color
+KUID=$(id -u kasm)
 
 # Pretty logging
 log_succes() {
@@ -247,7 +248,6 @@ fi
 
 # Force user mode on all containers V-235830
 USEROUT=$(/opt/kasm/bin/utils/yq_$(uname -m) '.services[].user' /opt/kasm/current/docker/docker-compose.yaml)
-KUID=$(id -u kasm)
 if [[ ! "${USEROUT}" == *"${KUID}"* ]]; then
   /opt/kasm/bin/utils/yq_$(uname -m) -i '.services[].user = "'${KUID}'"' /opt/kasm/current/docker/docker-compose.yaml
   RESTART_CONTAINERS="true"
