@@ -14,6 +14,33 @@ CON_ORANGE='\033[0;33m'
 CON_NC='\033[0m' # No Color
 KUID=$(id -u kasm)
 
+# Check for yq
+if [ ! -f '/opt/kasm/bin/utils/yq_x86_64' ]; then
+    # Check for internet connectivity
+    if ! curl -s --connect-timeout 5 https://www.google.com > /dev/null; then
+       echo "Without internet connectivity I cannot download YQ please install it at /opt/kasm/bin/utils/yq_x86_64"
+       exit 1
+    fi
+    YQ_RELEASE=$(curl -sX GET "https://api.github.com/repos/mikefarah/yq/releases/latest" \
+    | awk '/tag_name/{print $4;exit}' FS='[""]');
+    mkdir -p /opt/kasm/bin/utils/
+    curl -L -o \
+        /opt/kasm/bin/utils/yq_x86_64 \
+        https://github.com/mikefarah/yq/releases/download/${YQ_RELEASE}/yq_linux_amd64
+    chmod +x /opt/kasm/bin/utils/yq_x86_64
+fi
+
+# Determine role of server
+if ! /opt/kasm/bin/utils/yq_x86_64 '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml | grep -q null; then
+  ROLE=agent
+fi
+if ! /opt/kasm/bin/utils/yq_x86_64 '.services.db' /opt/kasm/current/docker/docker-compose.yaml | grep -q null; then
+  ROLE=db
+fi
+if ! /opt/kasm/bin/utils/yq_x86_64 '.services.kasm_api' /opt/kasm/current/docker/docker-compose.yaml | grep -q null; then
+  ROLE=app
+fi
+
 # Pretty logging
 log_succes() {
     printf "$1, ${CON_GREEN}PASS${CON_NC}, $2\n"
@@ -247,17 +274,18 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy' /opt/kasm/current/doc
 fi
 
 # Force user mode on all containers V-235830
-USEROUT=$(/opt/kasm/bin/utils/yq_$(uname -m) '.services[].user' /opt/kasm/current/docker/docker-compose.yaml)
-if [[ ! "${USEROUT}" == *"${KUID}"* ]]; then
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services[].user = "'${KUID}'"' /opt/kasm/current/docker/docker-compose.yaml
-  RESTART_CONTAINERS="true"
-  chown -R kasm:kasm /opt/kasm/current/log
-  chown -R kasm:kasm /opt/kasm/current/certs
-  log_succes "V-235830" "Containers set to run as kasm user ${KUID}"
-else
-  log_succes "V-235830" "Containers set to run as kasm user ${KUID}"
+if ! /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.db' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 ; then
+  USEROUT=$(/opt/kasm/bin/utils/yq_$(uname -m) '.services[].user' /opt/kasm/current/docker/docker-compose.yaml)
+  if [[ ! "${USEROUT}" == *"${KUID}"* ]]; then
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services[].user = "'${KUID}'"' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    chown -R kasm:kasm /opt/kasm/current/log
+    chown -R kasm:kasm /opt/kasm/current/certs
+    log_succes "V-235830" "Containers set to run as kasm user ${KUID}"
+  else
+    log_succes "V-235830" "Containers set to run as kasm user ${KUID}"
+  fi
 fi
-
 #### Restart containers if flagged ####
 if [ "${RESTART_CONTAINERS}" == "true" ]; then
   echo "Restaring containers with new compose changes"
