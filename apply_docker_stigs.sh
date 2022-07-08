@@ -3,6 +3,10 @@
 set -e
 #set -x
 
+command -v jq >/dev/null 2>&1 || { echo >&2 "The jq package is required, please install and restart the script.  Aborting."; exit 1; }
+command -v auditctl >/dev/null 2>&1 || { echo >&2 "The audit package is required, please install and restart the script.  Aborting."; exit 1; }
+command -v ausearch >/dev/null 2>&1 || { echo >&2 "The audit package is required, please install and restart the script.  Aborting."; exit 1; }
+
 jqi() {
   cat <<< "$(jq "$1" < "$2")" > "$2"
 }

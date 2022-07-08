@@ -155,10 +155,9 @@ EOL
   RESTART_CONTAINERS="true"
   # Done
   log_succes "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
-else
+elif [ -d "/opt/kasm/current/certs/docker" ] && /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null; then
   log_succes "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
-fi
-if ! /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+else
   log_succes "V-235818" "this host does not have an agent on it"
 fi
 
@@ -183,7 +182,7 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/curren
     chown root:root $DOCKER_SSL_CA
     log_succes "V-235859" "$DOCKER_SSL_CA owned by root:root"
   else
-    log_na "V-235861" "SSL cert does not exist"
+    log_na "V-235859" "SSL CA does not exist"
   fi
   chown -R kasm:kasm "/opt/kasm/current/certs/docker"
   log_succes "V-235859" "client certs are owned by kasm user"
