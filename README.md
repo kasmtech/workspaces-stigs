@@ -4,6 +4,8 @@ Script to apply docker stigs
 
 This has been tested on centos7 and ubuntu 20 on AMD64 architecture. They will not work currently on ARM64
 
+The OS needs a linux kernel of 4.11 or newer.
+
 Please install the jq and audit all should be available in the standard repos if they aren't already installed.
 
 The apply_kasm_stigs.sh will pull down and install the yq utility automatically on an internet connected host. 
