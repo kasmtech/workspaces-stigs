@@ -14,7 +14,7 @@ If you are on air gapped network please pull down the latest yq from here: https
 Kasm must be running when executing these scripts on the web app servers and agent servers. apply_kasm_stigs will handle shutting down and restarting kasm service containers when needed.
 The order that the scripts are ran is important, run the apply_docker_stigs.sh first, then run the apply_kasm_stigs.sh
 
-V-235819 may fail if kasm is listening on the default port of 443. Setting up Kasm behind a reverse proxy is one way to shift the port Kasm is listening on above 1024.
+V-235819 will fail if Kasm was installed using the default listening port of 443. To pass this check, Kasm must be installed with the -L 8443 flag, where 8443 can be any port above 1024.
+In a hardened environment, it is assumed that Kasm will be proxied behind a security device, such as an F5, which supports proxying on 443 to end-users.
 
-Kasm Workspaces 1.10.0 specific
-V-235827 will likely fail as not all containers have health checks in 1.10.0
+V-235827 will likely fail as Kasm Workspaces does not currently provide health checks for all containers. More health checks are present in 1.11.0 than are present in 1.10.0

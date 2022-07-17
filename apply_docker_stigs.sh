@@ -1,7 +1,11 @@
-
 #!/bin/bash
 set -e
 #set -x
+
+ARCH=$(uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/amd64/g')
+if [ "$ARCH" != "amd64" ] ; then
+    echo "Unable to continue. Kasm hardening scripts support AMD64 only."
+fi
 
 command -v jq >/dev/null 2>&1 || { echo >&2 "The jq package is required, please install and restart the script.  Aborting."; exit 1; }
 command -v auditctl >/dev/null 2>&1 || { echo >&2 "The audit package is required, please install and restart the script.  Aborting."; exit 1; }

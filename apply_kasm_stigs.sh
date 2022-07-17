@@ -5,6 +5,12 @@ if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
 fi
+
+ARCH=$(uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/amd64/g')
+if [ "$ARCH" != "amd64" ] ; then
+    echo "Unable to continue. Kasm hardening scripts support AMD64 only."
+fi
+
 PRI_INTERFACE=$(ip route | grep -m 1 'default via' | grep -Po '(?<=dev )\S+')
 PRI_IP=$(ip -f inet addr show "$PRI_INTERFACE" | grep -Po '(?<=inet )(\d{1,3}\.)+\d{1,3}')
 RESTART_CONTAINERS="false"
