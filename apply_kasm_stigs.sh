@@ -5,6 +5,12 @@ if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
 fi
+
+ARCH=$(uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/amd64/g')
+if [ "$ARCH" != "amd64" ] ; then
+    echo "Unable to continue. Kasm hardening scripts support AMD64 only."
+fi
+
 PRI_INTERFACE=$(ip route | grep -m 1 'default via' | grep -Po '(?<=dev )\S+')
 PRI_IP=$(ip -f inet addr show "$PRI_INTERFACE" | grep -Po '(?<=inet )(\d{1,3}\.)+\d{1,3}')
 RESTART_CONTAINERS="false"
@@ -29,6 +35,17 @@ if [ ! -f '/opt/kasm/bin/utils/yq_x86_64' ]; then
         https://github.com/mikefarah/yq/releases/download/${YQ_RELEASE}/yq_linux_amd64
     chmod +x /opt/kasm/bin/utils/yq_x86_64
 fi
+
+kernel_version_greater_than_or_equal() {
+  # $1 being passed in is major version to check for
+  # $2 being passed in is minor version to check for
+  read MAJOR_VERSION MINOR_VERSION <<<$(uname -r | awk -F '.' '{print $1, $2}')
+  if [ $MAJOR_VERSION -le $1 ] && [ $MINOR_VERSION -lt $2 ] || [ $MAJOR_VERSION -lt $1 ] ; then
+    echo 0
+  else
+    echo 1
+  fi
+}
 
 # Determine role of server
 if ! /opt/kasm/bin/utils/yq_x86_64 '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml | grep -q null; then
@@ -155,10 +172,9 @@ EOL
   RESTART_CONTAINERS="true"
   # Done
   log_succes "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
-else
+elif [ -d "/opt/kasm/current/certs/docker" ] && /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null; then
   log_succes "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
-fi
-if ! /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+else
   log_succes "V-235818" "this host does not have an agent on it"
 fi
 
@@ -183,7 +199,7 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/curren
     chown root:root $DOCKER_SSL_CA
     log_succes "V-235859" "$DOCKER_SSL_CA owned by root:root"
   else
-    log_na "V-235861" "SSL cert does not exist"
+    log_na "V-235859" "SSL CA does not exist"
   fi
   chown -R kasm:kasm "/opt/kasm/current/certs/docker"
   log_succes "V-235859" "client certs are owned by kasm user"
@@ -274,18 +290,45 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy' /opt/kasm/current/doc
 fi
 
 # Force user mode on all containers V-235830
-if ! /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.db' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 ; then
-  USEROUT=$(/opt/kasm/bin/utils/yq_$(uname -m) '.services[].user' /opt/kasm/current/docker/docker-compose.yaml)
-  if [[ ! "${USEROUT}" == *"${KUID}"* ]]; then
-    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services[].user = "'${KUID}'"' /opt/kasm/current/docker/docker-compose.yaml
-    RESTART_CONTAINERS="true"
-    chown -R kasm:kasm /opt/kasm/current/log
-    chown -R kasm:kasm /opt/kasm/current/certs
-    log_succes "V-235830" "Containers set to run as kasm user ${KUID}"
-  else
-    log_succes "V-235830" "Containers set to run as kasm user ${KUID}"
-  fi
-fi
+# We skip the db container since we need that to run as it's own already configured user.
+# If the kernel version is < 4.11 and the port to be mapped is 443 we can't update the user 
+# (making the assumption no other port under 1024 is likely to be mapped)
+CONTAINERS_TO_CHANGE=('proxy' 'kasm_share' 'kasm_redis' 'kasm_api' 'kasm_manager' 'kasm_agent')
+for container in ${CONTAINERS_TO_CHANGE[@]}; do
+    if [[ $container == 'proxy' && $(/opt/kasm/bin/utils/yq_x86_64 '.services.proxy | (. == null)' /opt/kasm/current/docker/docker-compose.yaml) == 'false' && $(kernel_version_greater_than_or_equal "4" "11") -eq 0 && $(/opt/kasm/bin/utils/yq_$(uname -m) '.services.proxy.ports.[] | ( . == "443:443")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
+        log_failure "V-235830" "Proxy container cannot be set to run as kasm user ${KUID}. Please update the OS kernel or change the port Kasm proxy listens on"
+    else
+        if [[ $(/opt/kasm/bin/utils/yq_x86_64 '.services.'${container}' | (. == null)' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
+            USEROUT=$(/opt/kasm/bin/utils/yq_$(uname -m) '.services.'${container}'.user' /opt/kasm/current/docker/docker-compose.yaml)
+            if [[ ! "${USEROUT}" == *"${KUID}"* ]]; then
+                /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.'${container}'.user = "'${KUID}'"' /opt/kasm/current/docker/docker-compose.yaml
+                RESTART_CONTAINERS="true"
+                if [[ $container == 'proxy' ]]; then
+                    chown -R kasm:kasm /opt/kasm/current/log/nginx
+                elif [[ $container == 'kasm_share' ]]; then
+                    chown -R kasm:kasm /opt/kasm/current/log/share*
+                elif [[ $container == 'kasm_api' ]]; then
+                    chown -R kasm:kasm /opt/kasm/current/log/api*
+                    chown -R kasm:kasm /opt/kasm/current/log/admin_api*
+                    chown -R kasm:kasm /opt/kasm/current/log/client_api*
+                    chown -R kasm:kasm /opt/kasm/current/log/subscription_api*
+                elif [[ $container == 'kasm_manager' ]]; then
+                    chown -R kasm:kasm /opt/kasm/current/log/manager_api*
+                    chown -R kasm:kasm /opt/kasm/current/log/web_filter_access*
+                elif [[ $container == 'kasm_agent' ]]; then
+                    chown -R kasm:kasm /opt/kasm/current/log/agent*
+                fi
+                if [[ $container == 'proxy' ]]; then
+                    chown -R kasm:kasm /opt/kasm/current/certs/kasm_nginx*
+                fi
+                log_succes "V-235830" "Container ${container} set to run as kasm user ${KUID}"   
+            else
+                log_succes "V-235830" "Container ${container} set to run as kasm user ${KUID}"            
+            fi
+        fi
+    fi
+done
+
 #### Restart containers if flagged ####
 if [ "${RESTART_CONTAINERS}" == "true" ]; then
   echo "Restaring containers with new compose changes"
