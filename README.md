@@ -22,9 +22,9 @@ These hardening scripts have been tested by Kasm Technologies on the following o
 
 * Ubuntu 20.04 LTS base OS
 * Ubuntu 20.04 LTS with Advantage subscription, full OS level hardened with FIPS mode enabled 
-* CentOS 7 base OS
+* CentOS 7 base OS with upgraded kernel >= 4.11
 
-Please open an issue on the project's issue tracker to report your experience with other operating systems.
+Please open an issue on the project's issue tracker to report your experience with other operating systems. The scripts have been written such that they should work on any Linux distro with the prerquisites sited.
 
 ## Prerequisites
 
