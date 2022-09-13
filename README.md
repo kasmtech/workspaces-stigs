@@ -18,7 +18,7 @@ git checkout release/1.11.0
 These hardening scripts will only work on x86_64/AMD64 based architectures.
 
 ## Supported Operating Systems
-These hardening scripts have been tested by Kasm Technologies on the following operating systems. It should be noted that we started with a base OS install and then installed Kasm Workspaces. These systems were not pre-configured in any way nor did they already have docker installed. These hardening scripts may not work on the following operating systems if they have unique non-default configurations. A Linux kernel version of 4.11 or new is required.
+These hardening scripts have been tested by Kasm Technologies on the following operating systems. It should be noted that we started with a base OS install and then installed Kasm Workspaces. These systems were not pre-configured in any way nor did they already have docker installed. These hardening scripts may not work on the following operating systems if they have unique non-default configurations. A Linux kernel version of 4.11 or newer is required.
 
 * Ubuntu 20.04 LTS base OS
 * Ubuntu 20.04 LTS with Advantage subscription, full OS level hardened with FIPS mode enabled 
@@ -31,7 +31,7 @@ Please open an issue on the project's issue tracker to report your experience wi
 Auditd must be installed on the operating system. Auditd is required to meet base operating system STIG requirements and should therefore already be installed. The package 'jq' is also required and should be available in the operating systems package repository for most operating systems.
 
 The apply_kasm_stigs.sh will pull down and install the yq utility automatically on an internet connected host. 
-If you are on air gapped network, please pull down the latest yq from here: https://github.com/mikefarah/yq/releases and put the binary here: /opt/kasm/bin/utilities/yq_x86_64
+If you are on an air gapped network, please pull down the latest yq from here: https://github.com/mikefarah/yq/releases and put the binary here: /opt/kasm/bin/utilities/yq_x86_64
 
 ## Applying the Scripts
 
