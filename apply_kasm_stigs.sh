@@ -209,55 +209,77 @@ fi
 
 # Agent changes
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [ ! -d "/opt/kasm/current/tmp/kasm_agent" ]; then
-  mkdir -p /opt/kasm/current/tmp/kasm_agent
-  chown -R kasm:kasm /opt/kasm/current/tmp/
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_agent.volumes += "/opt/kasm/current/tmp/kasm_agent:/tmp" | .services.kasm_agent += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
-  RESTART_CONTAINERS="true"
-  log_succes "V-235808" "kasm_agent is read only"
+  if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+    log_succes "V-235808" "kasm_agent is read only"
+  else
+    mkdir -p /opt/kasm/current/tmp/kasm_agent
+    chown -R kasm:kasm /opt/kasm/current/tmp/
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_agent.volumes += "/opt/kasm/current/tmp/kasm_agent:/tmp" | .services.kasm_agent += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    log_succes "V-235808" "kasm_agent is read only"
+  fi
 else
   log_succes "V-235808" "kasm_agent is read only"
 fi
 
 # Proxy changes
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [ ! -d "/opt/kasm/current/cache/nginx" ]; then
-  mkdir -p /opt/kasm/current/cache/nginx
-  chown -R kasm:kasm /opt/kasm/current/cache
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.proxy.volumes += "/opt/kasm/current/cache/nginx:/var/cache/nginx" | .services.proxy += {"read_only": true} | .services.proxy += {"tmpfs": ["/var/run:uid='${KUID}',gid='${KUID}'"]}' /opt/kasm/current/docker/docker-compose.yaml
-  RESTART_CONTAINERS="true"
-  log_succes "V-235808" "proxy is read only"
+  if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1;
+then
+    log_succes "V-235808" "proxy is read only"
+  else
+    mkdir -p /opt/kasm/current/cache/nginx
+    chown -R kasm:kasm /opt/kasm/current/cache
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.proxy.volumes += "/opt/kasm/current/cache/nginx:/var/cache/nginx" | .services.proxy += {"read_only": true} | .services.proxy += {"tmpfs": ["/var/run:uid='${KUID}',gid='${KUID}'"]}' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    log_succes "V-235808" "proxy is read only"
+  fi
 else
   log_succes "V-235808" "proxy is read only"
 fi
 
 # API changes
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_api' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [ ! -d "/opt/kasm/current/tmp/kasm_api" ]; then
-  mkdir -p /opt/kasm/current/tmp/kasm_api
-  chown -R kasm:kasm /opt/kasm/current/tmp
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_api.volumes += "/opt/kasm/current/tmp/kasm_api:/tmp" | .services.kasm_api += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
-  RESTART_CONTAINERS="true"
-  log_succes "V-235808" "kasm_api is read only"
+  if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_api.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1;
+then
+    log_succes "V-235808" "kasm_api is read only"
+  else
+    mkdir -p /opt/kasm/current/tmp/kasm_api
+    chown -R kasm:kasm /opt/kasm/current/tmp
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_api.volumes += "/opt/kasm/current/tmp/kasm_api:/tmp" | .services.kasm_api += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    log_succes "V-235808" "kasm_api is read only"
+  fi
 else
   log_succes "V-235808" "kasm_api is read only"
 fi
 
 # Manager Changes
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_manager' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [ ! -d "/opt/kasm/current/tmp/kasm_manager" ]; then
-  mkdir -p /opt/kasm/current/tmp/kasm_manager
-  chown -R kasm:kasm /opt/kasm/current/tmp
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_manager.volumes += "/opt/kasm/current/tmp/kasm_manager:/tmp" | .services.kasm_manager += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
-  RESTART_CONTAINERS="true"
-  log_succes "V-235808" "kasm_manager is read only"
+  if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_manager.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+    log_succes "V-235808" "kasm_manager is read only"
+  else
+    mkdir -p /opt/kasm/current/tmp/kasm_manager
+    chown -R kasm:kasm /opt/kasm/current/tmp
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_manager.volumes += "/opt/kasm/current/tmp/kasm_manager:/tmp" | .services.kasm_manager += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    log_succes "V-235808" "kasm_manager is read only"
+  fi
 else
   log_succes "V-235808" "kasm_manager is read only"
 fi
 
 # Share changes
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_share' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [ ! -d "/opt/kasm/current/tmp/kasm_share" ]; then
-  mkdir -p /opt/kasm/current/tmp/kasm_share
-  chown -R kasm:kasm /opt/kasm/current/tmp
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_share.volumes += "/opt/kasm/current/tmp/kasm_share:/tmp" | .services.kasm_share += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
-  RESTART_CONTAINERS="true"
-  log_succes "V-235808" "kasm_share is read only"
+  if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_manager.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+    log_succes "V-235808" "kasm_share is read only"
+  else
+    mkdir -p /opt/kasm/current/tmp/kasm_share
+    chown -R kasm:kasm /opt/kasm/current/tmp
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_share.volumes += "/opt/kasm/current/tmp/kasm_share:/tmp" | .services.kasm_share += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    log_succes "V-235808" "kasm_share is read only"
+  fi
 else
   log_succes "V-235808" "kasm_share is read only"
 fi
@@ -289,11 +311,20 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy' /opt/kasm/current/doc
     fi
 fi
 
+# guac health check
+if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_guac' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 ; then
+    if ! (/opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_guac' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 | grep --quiet healthcheck) ; then
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_guac += {"healthcheck": { "test": "curl -f http://localhost:3000/__healthcheck --max-time 30 || exit 1", "timeout": "3s", "retries": 5 }}' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    echo 'APPLIED HEATH CHECK guac'
+    fi
+fi
+
 # Force user mode on all containers V-235830
 # We skip the db container since we need that to run as it's own already configured user.
 # If the kernel version is < 4.11 and the port to be mapped is 443 we can't update the user 
 # (making the assumption no other port under 1024 is likely to be mapped)
-CONTAINERS_TO_CHANGE=('proxy' 'kasm_share' 'kasm_redis' 'kasm_api' 'kasm_manager' 'kasm_agent')
+CONTAINERS_TO_CHANGE=('proxy' 'kasm_share' 'kasm_redis' 'kasm_api' 'kasm_manager' 'kasm_agent' 'kasm_guac')
 for container in ${CONTAINERS_TO_CHANGE[@]}; do
     if [[ $container == 'proxy' && $(/opt/kasm/bin/utils/yq_x86_64 '.services.proxy | (. == null)' /opt/kasm/current/docker/docker-compose.yaml) == 'false' && $(kernel_version_greater_than_or_equal "4" "11") -eq 0 && $(/opt/kasm/bin/utils/yq_$(uname -m) '.services.proxy.ports.[] | ( . == "443:443")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
         log_failure "V-235830" "Proxy container cannot be set to run as kasm user ${KUID}. Please update the OS kernel or change the port Kasm proxy listens on"
