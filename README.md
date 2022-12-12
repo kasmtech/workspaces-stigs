@@ -6,12 +6,12 @@
 ---
 
 ## Supported Kasm Workspaces Versions
-Ensure that you switch to a branch that matches the version of Kasm Workspaces that you have installed. For example, if you are running Kasm Workspaces 1.11.0, ensure that you change to the release/1.11.0 branch before applying the scripts. At this time, there is only a release for 1.11.0, however, it will work on 1.10.0 but may leave more remaining open findings.
+Ensure that you switch to a branch that matches the version of Kasm Workspaces that you have installed. For example, if you are running Kasm Workspaces 1.12.0, ensure that you change to the release/1.12.0 branch before applying the script, for 1.11.0 change to release/1.11.0.
 
 ```bash
 git clone https://github.com/kasmtech/docker-stigs
 cd docker-stigs
-git checkout release/1.11.0
+git checkout release/1.12.0
 ```
 
 ## Supported Architectures
@@ -43,7 +43,7 @@ The order that the scripts are ran is important, run the apply_docker_stigs.sh f
 git clone https://github.com/kasmtech/docker-stigs
 cd docker-stigs
 # switch to the release branch that matches your installed version of Kasm Workspaces
-git checkout release/1.11.0
+git checkout release/1.12.0
 sudo bash apply_docker_stigs.sh
 sudo bash apply_kasm_stigs.sh
 ```
