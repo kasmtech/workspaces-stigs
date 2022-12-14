@@ -50,3 +50,6 @@ sudo bash apply_kasm_stigs.sh
 
 V-235819 will fail if Kasm was installed using the default listening port of 443. To pass this check, Kasm must be installed with the -L 8443 flag, where 8443 can be any port above 1024.
 In a hardened environment, it is assumed that Kasm will be proxied behind a security device, such as an F5 or NGINX, which supports proxying on 443 to end-users.
+
+## Considerations when executing a database backup
+Because the database is running as uid 70 gid 70, when you execute the /opt/kasm/bin/utils/db_backup script ensure that the directory passed for the backup file is writable by uid:70 or the backup will fail.
