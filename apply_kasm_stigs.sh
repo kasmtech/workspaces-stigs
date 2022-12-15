@@ -284,6 +284,21 @@ else
   log_succes "V-235808" "kasm_share is read only"
 fi
 
+# Redis changes
+if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_redis' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [ ! -d "/opt/kasm/current/tmp/kasm_redis" ]; then
+  if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_redis.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+    log_succes "V-235808" "kasm_redis is read only"
+  else
+    mkdir -p /opt/kasm/current/tmp/kasm_redis
+    chown -R kasm:kasm /opt/kasm/current/tmp
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_redis.volumes += ["/opt/kasm/current/tmp/kasm_redis:/data"] | .services.kasm_redis += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    log_succes "V-235808" "kasm_redis is read only"
+  fi
+else
+  log_succes "V-235808" "kasm_redis is read only"
+fi
+
 # agent health check
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 ; then
     if ! (/opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 | grep --quiet healthcheck) ; then
@@ -317,6 +332,15 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_guac' /opt/kasm/current
     /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_guac += {"healthcheck": { "test": "curl -f http://localhost:3000/__healthcheck --max-time 30 || exit 1", "timeout": "3s", "retries": 5 }}' /opt/kasm/current/docker/docker-compose.yaml
     RESTART_CONTAINERS="true"
     echo 'APPLIED HEATH CHECK guac'
+    fi
+fi
+
+# redis health check
+if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_redis' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 ; then
+    if ! (/opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_redis' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 | grep --quiet healthcheck) ; then
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_redis += {"healthcheck": { "test": "redis-cli ping", "timeout": "3s", "retries": 5 }}' /opt/kasm/current/docker/docker-compose.yaml
+    RESTART_CONTAINERS="true"
+    echo 'APPLIED HEATH CHECK redis'
     fi
 fi
 
