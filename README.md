@@ -53,3 +53,13 @@ In a hardened environment, it is assumed that Kasm will be proxied behind a secu
 
 ## Considerations when executing a database backup
 Because the database is running as uid 70 gid 70, when you execute the /opt/kasm/bin/utils/db_backup script ensure that the directory passed for the backup file is writable by uid:70 or the backup will fail.
+
+## Considerations when executing a database restore
+When running a db_restore against a hardened Kasm 1.12.0 instance there is a modification that is needed for the db_restore script.
+Change line 144 of the db_restore script:
+
+    TEMP_DB_BACKUP_PATH=${KASM_INSTALL_BASE}/conf/database/
+
+Change the line to:
+
+    TEMP_DB_BACKUP_PATH=${KASM_INSTALL_BASE}/tmp/kasm_db/
