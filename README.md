@@ -9,8 +9,8 @@
 Ensure that you switch to a branch that matches the version of Kasm Workspaces that you have installed. For example, if you are running Kasm Workspaces 1.12.0, ensure that you change to the release/1.12.0 branch before applying the script, for 1.11.0 change to release/1.11.0.
 
 ```bash
-git clone https://github.com/kasmtech/docker-stigs
-cd docker-stigs
+git clone https://github.com/kasmtech/workspaces-stigs.git
+cd workspaces-stigs
 git checkout release/1.12.0
 ```
 
@@ -40,8 +40,8 @@ The order that the scripts are ran is important, run the apply_docker_stigs.sh f
 
 ```bash
 # Kasm Workspaces must already be installed
-git clone https://github.com/kasmtech/docker-stigs
-cd docker-stigs
+git clone https://github.com/kasmtech/workspaces-stigs.git
+cd workspaces-stigs
 # switch to the release branch that matches your installed version of Kasm Workspaces
 git checkout release/1.12.0
 sudo bash apply_docker_stigs.sh
