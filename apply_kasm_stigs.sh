@@ -289,22 +289,34 @@ fi
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.db' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.db.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
     log_succes "V-235808" "kasm_db is read only"
 else
+    success=1
     if [[ ! -d "/opt/kasm/current/tmp/kasm_db" ]]; then
         mkdir /opt/kasm/current/tmp/kasm_db/
     fi
+    if [[ ! -d "/opt/kasm/current/tmp/kasm_db_run" ]]; then
+        mkdir /opt/kasm/current/tmp/kasm_db_run/
+    fi
     if [[ $(/opt/kasm/bin/utils/yq_$(uname -m) '.services.db.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/") | (. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
         $(/opt/kasm/bin/utils/yq_$(uname -m) -i 'del(.services.db.volumes[] | select(. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/")) | .services.db.volumes += "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/"' /opt/kasm/current/docker/docker-compose.yaml)
-        /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_share += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
+        /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.db += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
         RESTART_CONTAINERS="true"
-        log_succes "V-235808" "kasm_db is read only"
+        success=1
     else
         if [[ $(/opt/kasm/bin/utils/yq_$(uname -m) '.services.db.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/") | (. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
             log_failure "V-235808 couldn't find tmp volumne to update for the database contaioner"
+            success=0
         else
-            /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_share += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
+            /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.db += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
             RESTART_CONTAINERS="true"
-            log_succes "V-235808" "kasm_db is read only"
+            success=1
         fi
+    fi
+    if [[ $(/opt/kasm/bin/utils/yq_$(uname -m) '.services.db.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db_run/:/var/run/postgresql/") | (. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db_run/:/var/run/postgresql/")' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]] && [[ "$success" -eq "1" ]]; then
+        $(/opt/kasm/bin/utils/yq_$(uname -m) -i '.services.db.volumes += "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db_run/:/var/run/postgresql/"' /opt/kasm/current/docker/docker-compose.yaml)
+        success=1
+    fi
+    if [[ "$success" -eq "1" ]]; then
+        log_succes "V-235808" "kasm_db is read only"
     fi
 fi
 
@@ -384,6 +396,12 @@ for container in ${CONTAINERS_TO_CHANGE[@]}; do
             chown -R 70:70 /opt/kasm/current/tmp/kasm_db/
         else
             chown -R 70:70 /opt/kasm/current/tmp/kasm_db/
+        fi
+        if [[ ! -d "/opt/kasm/current/tmp/kasm_db_run" ]]; then
+            mkdir /opt/kasm/current/tmp/kasm_db_run/
+            chown -R 70:70 /opt/kasm/current/tmp/kasm_db_run/
+        else
+            chown -R 70:70 /opt/kasm/current/tmp/kasm_db_run/
         fi
         if [[ $(/opt/kasm/bin/utils/yq_$(uname -m) '.services.'${container}'.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/") | (. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
             $(/opt/kasm/bin/utils/yq_$(uname -m) -i 'del(.services.'${container}'.volumes[] | select(. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/")) | .services.'${container}'.volumes += "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/"' /opt/kasm/current/docker/docker-compose.yaml)
