@@ -303,7 +303,7 @@ else
         success=1
     else
         if [[ $(/opt/kasm/bin/utils/yq_$(uname -m) '.services.db.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/") | (. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
-            log_failure "V-235808 couldn't find tmp volumne to update for the database contaioner"
+            log_failure "V-235808 couldn't find tmp volume to update for the database container"
             success=0
         else
             /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.db += {"read_only": true}' /opt/kasm/current/docker/docker-compose.yaml
