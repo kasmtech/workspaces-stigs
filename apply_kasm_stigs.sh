@@ -122,6 +122,7 @@ fi
 # Set pid limits for all containers V-235828
 if ! /opt/kasm/bin/utils/yq_$(uname -m) -e '.services[].pids_limit' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
   /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.[] += {"pids_limit": 100}' /opt/kasm/current/docker/docker-compose.yaml
+  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_guac += {"pids_limit": 1000}' /opt/kasm/current/docker/docker-compose.yaml
   RESTART_CONTAINERS="true"
   log_succes "V-235828" "pid limit set for all containers"
 else
