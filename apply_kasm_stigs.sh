@@ -122,7 +122,9 @@ fi
 # Set pid limits for all containers V-235828
 if ! /opt/kasm/bin/utils/yq_$(uname -m) -e '.services[].pids_limit' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
   /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.[] += {"pids_limit": 100}' /opt/kasm/current/docker/docker-compose.yaml
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_guac += {"pids_limit": 1000}' /opt/kasm/current/docker/docker-compose.yaml
+  if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_guac' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+    /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.kasm_guac += {"pids_limit": 1000}' /opt/kasm/current/docker/docker-compose.yaml
+  fi
   RESTART_CONTAINERS="true"
   log_succes "V-235828" "pid limit set for all containers"
 else
@@ -170,7 +172,7 @@ EOL
   systemctl daemon-reload
   systemctl restart docker
   # Agent modifications
-  /opt/kasm/bin/utils/yq_$(uname -m) -i 'del(.services.kasm_agent.volumes[1])| .services.kasm_agent *= { "environment": {"DOCKER_HOST": "tcp://'${PRI_IP}':2375", "DOCKER_CERT_PATH": "/opt/kasm/current/certs/docker"}}' /opt/kasm/current/docker/docker-compose.yaml
+  /opt/kasm/bin/utils/yq_$(uname -m) -i 'del(.services.kasm_agent.volumes[1])| .services.kasm_agent *= { "environment": {"DOCKER_HOST": "tcp://'${PRI_IP}':2375", "DOCKER_CERT_PATH": "/opt/kasm/current/certs/docker", "DOCKER_TLS_VERIFY": "1"}}' /opt/kasm/current/docker/docker-compose.yaml
   RESTART_CONTAINERS="true"
   # Done
   log_succes "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
