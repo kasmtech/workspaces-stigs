@@ -19,7 +19,10 @@ CON_GREEN='\033[0;32m'
 CON_ORANGE='\033[0;33m'
 CON_NC='\033[0m' # No Color
 KUID=$(id -u kasm)
-KASM_VERSION='1.12.0'
+KASM_VERSION='current'
+NUM_CPUS=$(nproc)
+MEMORY=$(expr substr $(free -g -h -t | grep "Mem:" | awk '{print $2}') 1 2)
+let MEMORY=$MEMORY-1
 
 # Check for yq
 if [ ! -f '/opt/kasm/bin/utils/yq_x86_64' ]; then
@@ -94,8 +97,13 @@ read -p "Please verify that $PRI_IP is the IP address that docker should bind to
 
 # Set cpu and memory limitations for service containers V-235807, V-235806
 if ! /opt/kasm/bin/utils/yq_$(uname -m) -e '.services[].deploy.resources.limits' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-  /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.[] += {"deploy": {"resources": {"limits": {"cpus": "4", "memory": "2G"}}}}' /opt/kasm/current/docker/docker-compose.yaml
-  RESTART_CONTAINERS="true"
+  for key in $(/opt/kasm/bin/utils/yq_$(uname -m) '.services | keys | .[]' /opt/kasm/current/docker/docker-compose.yaml); do
+    if [[ "${key}" =~ db ]]; then
+      /opt/kasm/bin/utils/yq_$(uname -m) -i '.services."'"${key}"'" += {"deploy": {"resources": {"limits": {"cpus": "'"${NUM_CPUS}"'", "memory": "'"${MEMORY}"'G"}}}}' /opt/kasm/current/docker/docker-compose.yaml
+    else
+      /opt/kasm/bin/utils/yq_$(uname -m) -i '.services."'"${key}"'" += {"deploy": {"resources": {"limits": {"cpus": "4", "memory": "2G"}}}}' /opt/kasm/current/docker/docker-compose.yaml
+    fi
+  done  RESTART_CONTAINERS="true"
   log_succes "V-235807,V-235806" "CPU and memory limits have been set"
 else
   log_succes "V-235807,V-235806" "CPU and memory limits have been set"
