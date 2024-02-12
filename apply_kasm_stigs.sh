@@ -21,8 +21,13 @@ CON_NC='\033[0m' # No Color
 KUID=$(id -u kasm)
 KASM_VERSION='current'
 NUM_CPUS=$(nproc)
-MEMORY=$(expr substr $(free -g -h -t | grep "Mem:" | awk '{print $2}') 1 2)
-let MEMORY=$MEMORY-1
+TOTAL_MEM=$(free -g -h -t | grep "Mem:" | awk '{print $2}')
+MEMORY=$(printf "%.0f" $(echo ${TOTAL_MEM} | cut -d'G' -f1))
+
+if [ "${MEMORY}" -ge 4 ]
+then
+  let MEMORY=$MEMORY-1
+fi
 
 # Check for yq
 if [ ! -f '/opt/kasm/bin/utils/yq_x86_64' ]; then
