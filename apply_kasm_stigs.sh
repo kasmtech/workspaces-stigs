@@ -108,7 +108,8 @@ if ! /opt/kasm/bin/utils/yq_$(uname -m) -e '.services[].deploy.resources.limits'
     else
       /opt/kasm/bin/utils/yq_$(uname -m) -i '.services."'"${key}"'" += {"deploy": {"resources": {"limits": {"cpus": "4", "memory": "2G"}}}}' /opt/kasm/current/docker/docker-compose.yaml
     fi
-  done  RESTART_CONTAINERS="true"
+  done
+  RESTART_CONTAINERS="true"
   log_succes "V-235807,V-235806" "CPU and memory limits have been set"
 else
   log_succes "V-235807,V-235806" "CPU and memory limits have been set"
