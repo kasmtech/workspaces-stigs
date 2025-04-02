@@ -52,7 +52,7 @@ CON_GREEN='\033[0;32m'
 CON_ORANGE='\033[0;33m'
 CON_NC='\033[0m' # No Color
 KUID=$(id -u kasm)
-KASM_VERSION='1.16.0'
+KASM_VERSION='1.17.0'
 NUM_CPUS=$(nproc)
 CPU_LIMIT=4
 TOTAL_MEM=$(free -g -h -t | grep "Mem:" | awk '{print $2}')
@@ -498,7 +498,7 @@ if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_redis' /opt/kasm/curren
 fi
 
 # Force user mode on all containers V-235830
-# If the kernel version is < 4.11 and the port to be mapped is 443 we can't update the user 
+# If the kernel version is < 4.11 and the port to be mapped is 443 we can't update the user
 # (making the assumption no other port under 1024 is likely to be mapped)
 CONTAINERS_TO_CHANGE=('proxy' 'kasm_share' 'kasm_agent' 'db')
 # kasm_api, kasm_guac, kasm_manager, kasm_rdp_gateway, kasm_rdp_https_gateway, and kasm_redis all pass this check without any modifcation.
@@ -555,9 +555,9 @@ for container in ${CONTAINERS_TO_CHANGE[@]}; do
                 if [[ $container == 'proxy' ]]; then
                     chown -R kasm:kasm /opt/kasm/current/certs/kasm_nginx*
                 fi
-                log_succes "V-235830" "Container ${container} set to run as kasm user ${KUID}"   
+                log_succes "V-235830" "Container ${container} set to run as kasm user ${KUID}"
             else
-                log_succes "V-235830" "Container ${container} set to run as kasm user ${KUID}"        
+                log_succes "V-235830" "Container ${container} set to run as kasm user ${KUID}"
             fi
         fi
     fi
@@ -565,7 +565,7 @@ done
 if [ ! -z "$SHOW_ARTIFACT" ] ; then
   echo "Command:  docker ps -q -a | xargs docker inspect --format '{{ .Id }}: User={{ .Config.User }}' "
   echo "Output: $(docker ps -q -a | xargs docker inspect --format '{{ .Id }}: User={{ .Config.User }}')"
-fi 
+fi
 
 # Rename nginx config for the share service, if exists
 if [ -f /opt/kasm/current/conf/nginx/services.d/share_api.conf ]; then
@@ -573,12 +573,12 @@ if [ -f /opt/kasm/current/conf/nginx/services.d/share_api.conf ]; then
   mv /opt/kasm/current/conf/nginx/upstream_share.conf /opt/kasm/current/conf/nginx/upstream_share.bak
 fi
 
-# Remove the Kasm_share container from docker compose 
+# Remove the Kasm_share container from docker compose
 if /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_share' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 ; then
   RESTART_CONTAINERS="true"
   /opt/kasm/bin/utils/yq_$(uname -m) eval -i 'del(.services.kasm_share)' /opt/kasm/current/docker/docker-compose.yaml
   /opt/kasm/bin/utils/yq_$(uname -m) eval -i 'del(.services.proxy.depends_on[] | select(. == "kasm_share"))' /opt/kasm/current/docker/docker-compose.yaml
-  if docker container inspect kasm_share > /dev/null 2>&1 ; then 
+  if docker container inspect kasm_share > /dev/null 2>&1 ; then
     docker container rm -f kasm_share
   fi
 fi
