@@ -529,12 +529,12 @@ for container in ${CONTAINERS_TO_CHANGE[@]}; do
                 continue
             fi
         fi
-        log_succes "V-235830" "Container ${container} set to run as kasm user ${KUID}"
+        log_succes "V-235830" "Container db set to run as postgresql user 70"
     else
         if [[ $(/opt/kasm/bin/utils/yq_x86_64 '.services.'${container}' | (. == null)' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
             USEROUT=$(/opt/kasm/bin/utils/yq_$(uname -m) '.services.'${container}'.user' /opt/kasm/current/docker/docker-compose.yaml)
-            if [[ ! "${USEROUT}" == *"${KUID}"* ]]; then
-                /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.'${container}'.user = "'${KUID}'"' /opt/kasm/current/docker/docker-compose.yaml
+            if [[ ! "${USEROUT}" == *'${KASM_UID?}:${KASM_GID?}'* ]]; then
+                /opt/kasm/bin/utils/yq_$(uname -m) -i '.services.'${container}'.user = "${KASM_UID?}:${KASM_GID?}"' /opt/kasm/current/docker/docker-compose.yaml
                 RESTART_CONTAINERS="true"
                 if [[ $container == 'proxy' ]]; then
                     chown -R kasm:kasm /opt/kasm/current/log/nginx
