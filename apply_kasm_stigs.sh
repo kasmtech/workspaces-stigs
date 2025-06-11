@@ -222,7 +222,7 @@ if [ ! -z "$SHOW_ARTIFACT" ] ; then
 fi
 
 # Setup docker daemon to use TCP and modify agent V-235818
-if [ ! -d "/opt/kasm/current/certs/docker" ] && /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null; then
+if [ ! -d "/opt/kasm/current/certs/docker" ] && /opt/kasm/bin/utils/yq_$(uname -m) -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
   # Cert management
   mkdir /tmp/certs
   cd /tmp/certs
