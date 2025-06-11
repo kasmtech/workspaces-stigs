@@ -187,15 +187,16 @@ if [ ! -z "$SHOW_ARTIFACT" ] ; then
 fi
 
 # Bind open ports to host interface V-235820
-
-if ! [[ "$(/opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy.ports[0]' /opt/kasm/current/docker/docker-compose.yaml)" == *"${PRI_IP}"*  ]] ; then
-  PORTS="$(/opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy.ports[0]' /opt/kasm/current/docker/docker-compose.yaml | grep -Po '\d+:\d+$')"
-  /opt/kasm/bin/utils/yq_$(uname -m) -i ".services.proxy.ports[0] = \"${PRI_IP}:${PORTS}\"" /opt/kasm/current/docker/docker-compose.yaml
-  sudo docker rm -f kasm_proxy
-  sudo /opt/kasm/bin/start
-  log_succes "V-235820" "Incoming container traffic has been bound to ${PRI_IP}"
-else
-  log_succes "V-235820" "Incoming container traffic has been bound to ${PRI_IP}"
+if "/opt/kasm/bin/utils/yq_$(uname -m)" -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+  if ! [[ "$(/opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy.ports[0]' /opt/kasm/current/docker/docker-compose.yaml)" == *"${PRI_IP}"*  ]] ; then
+    PORTS="$(/opt/kasm/bin/utils/yq_$(uname -m) -e '.services.proxy.ports[0]' /opt/kasm/current/docker/docker-compose.yaml | grep -Po '\d+:\d+$')"
+    /opt/kasm/bin/utils/yq_$(uname -m) -i ".services.proxy.ports[0] = \"${PRI_IP}:${PORTS}\"" /opt/kasm/current/docker/docker-compose.yaml
+    sudo docker rm -f kasm_proxy
+    sudo /opt/kasm/bin/start
+    log_succes "V-235820" "Incoming container traffic has been bound to ${PRI_IP}"
+  else
+    log_succes "V-235820" "Incoming container traffic has been bound to ${PRI_IP}"
+  fi
 fi
 if [ ! -z "$SHOW_ARTIFACT" ] ; then
   echo "Command: docker ps --quiet | xargs docker inspect --format '{{ .Name }}: Ports={{ .NetworkSettings.Ports }}' "
