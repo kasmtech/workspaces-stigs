@@ -1,0 +1,51 @@
+image: docker
+services:
+  - docker:dind
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: always
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+
+stages:
+  - clean
+  - upload-mr
+  - upload
+
+clean:
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ '/Merge branch/'
+  stage: clean
+  image:
+    name: amazon/aws-cli
+    entrypoint: [""]
+  script:
+    - BRANCH_NAME=$(grep -Po "Merge branch '\K(\S*)(?=')" <<< ${CI_COMMIT_MESSAGE})
+    - export S3_BUILD_DIRECTORY="engineering/docker-stigs/${BRANCH_NAME/\//_}"
+    - export S3_BUCKET="kasm-static-content"
+    - if [[ -z ${BRANCH_NAME/\//_} ]] || [[ "${BRANCH_NAME}" = $CI_DEFAULT_BRANCH  ]]; then exit 0; fi
+    - aws --version
+    - aws s3 rm s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY} --recursive
+
+upload-mr:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  stage: upload-mr
+  image:
+    name: amazon/aws-cli
+    entrypoint: [""]
+  script:
+    - export BASE_DIR="$(readlink -f .)"
+    - export S3_BUILD_DIRECTORY="engineering/docker-stigs/${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_}"
+    - export S3_BUCKET="kasm-static-content"
+    - if [[ -z ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_} ]]; then exit 1; fi
+    - aws --version
+    - aws s3 cp ${BASE_DIR}/apply_docker_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/ --acl public-read
+    - aws s3 cp ${BASE_DIR}/apply_kasm_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/components --acl public-read
+
