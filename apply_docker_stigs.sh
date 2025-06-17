@@ -375,14 +375,14 @@ if [[ -n "${LOW_HOST_PORT}" ]]; then
     fi
 fi
 
-if docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}' | grep --quiet -i "NetworkMode=host"; then
+if docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | tail -n +2 | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}' | grep --quiet -i "NetworkMode=host"; then
     log_failure 'V-235805' 'containers present sharing hosts network namespace'
 else
     log_succes 'V-235805' 'no containers running sharing hosts netork namespace'
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
-    echo "Command: docker ps --all | grep -iv \"ucp\|kube\|dtr\" | awk '{print $1}' | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}'"
-    echo "Output: $(docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}') "
+    echo "Command: docker ps --all | grep -iv \"ucp\|kube\|dtr\" | awk '{print $1}' | tail -n +2 | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}'"
+    echo "Output: $(docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | tail -n +2 | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}') "
 fi
 
 if docker ps --quiet --all | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: Devices={{ .HostConfig.Devices }}' | grep --quiet -i 'pathincontainer'; then
