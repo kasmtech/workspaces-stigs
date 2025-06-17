@@ -256,7 +256,7 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
 fi
 
 if docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | xargs docker inspect --format '{{ .Id }}: PidMode={{ .HostConfig.PidMode }}' 2>/dev/null | grep -i pidmode=host; then
-    og_failure 'V-235784' 'containers present running with host PID namespace'
+    log_failure 'V-235784' 'containers present running with host PID namespace'
 else
     log_succes 'V-235784' 'no containers running with host PID namespace detected'
 fi
