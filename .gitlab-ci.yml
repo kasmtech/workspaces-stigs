@@ -16,7 +16,6 @@ workflow:
 stages:
   - clean
   - upload-mr
-  - upload
 
 clean:
   rules:

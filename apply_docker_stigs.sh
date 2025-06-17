@@ -360,14 +360,16 @@ if [ -n "${SHOW_ARTIFACT}" ]; then
 fi
 
 LOW_HOST_PORT=$(docker ps --quiet --all | xargs docker inspect --format '{{ .Id }}: Ports={{ .NetworkSettings.Ports }}' | grep -Pio '(?<=HostPort:)\d+' | sort -n | head -n 1)
-if [ "$LOW_HOST_PORT" -lt 1024 ]; then
-    log_failure 'V-235819' 'host ports below 1024 are mapped into containers.';
-else
-    log_succes 'V-235819' 'no host ports mapped below 1024';
-fi
-if [ -n "${SHOW_ARTIFACT}" ]; then
-    echo "Command: docker ps --quiet --all | xargs docker inspect --format '{{ .Id }}: Ports={{ .NetworkSettings.Ports }}' "
-    echo "Output: $(docker ps --quiet --all | xargs docker inspect --format '{{ .Id }}: Ports={{ .NetworkSettings.Ports }}') "
+if [[ -n "${LOW_HOST_PORT}" ]]; then
+    if [ "${LOW_HOST_PORT}" -lt 1024 ]; then
+        log_failure 'V-235819' 'host ports below 1024 are mapped into containers.';
+    else
+        log_succes 'V-235819' 'no host ports mapped below 1024';
+    fi
+    if [ -n "${SHOW_ARTIFACT}" ]; then
+        echo "Command: docker ps --quiet --all | xargs docker inspect --format '{{ .Id }}: Ports={{ .NetworkSettings.Ports }}' "
+        echo "Output: $(docker ps --quiet --all | xargs docker inspect --format '{{ .Id }}: Ports={{ .NetworkSettings.Ports }}') "
+    fi
 fi
 
 if docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | xargs docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}' 2>/dev/null | grep --quiet -i "NetworkMode=host"; then
