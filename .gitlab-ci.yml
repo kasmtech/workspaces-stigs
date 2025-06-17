@@ -46,5 +46,5 @@ upload-mr:
     - if [[ -z ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_} ]]; then exit 1; fi
     - aws --version
     - aws s3 cp ${BASE_DIR}/apply_docker_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/ --acl public-read
-    - aws s3 cp ${BASE_DIR}/apply_kasm_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/components --acl public-read
+    - aws s3 cp ${BASE_DIR}/apply_kasm_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/ --acl public-read
 
