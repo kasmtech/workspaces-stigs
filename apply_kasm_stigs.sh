@@ -312,6 +312,22 @@ if "${YQ_BIN}" -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose
     fi
 fi
 
+# Remove the Kasm_share container from docker compose
+if "${YQ_BIN}" -e '.services.kasm_share' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+    RESTART_CONTAINERS="true"
+    "${YQ_BIN}" eval -i 'del(.services.kasm_share)' /opt/kasm/current/docker/docker-compose.yaml
+    "${YQ_BIN}" eval -i 'del(.services.proxy.depends_on[] | select(. == "kasm_share"))' /opt/kasm/current/docker/docker-compose.yaml
+    if docker container inspect kasm_share > /dev/null 2>&1; then
+        docker container rm -f kasm_share
+    fi
+fi
+
+# Rename nginx config for the share service, if exists
+if [[ -f /opt/kasm/current/conf/nginx/services.d/share_api.conf ]] ; then
+    mv /opt/kasm/current/conf/nginx/services.d/share_api.conf /opt/kasm/current/conf/nginx/services.d/share_api.bak
+    mv /opt/kasm/current/conf/nginx/upstream_share.conf /opt/kasm/current/conf/nginx/upstream_share.bak
+fi
+
 ### RO containers V-235808
 
 # Agent changes
@@ -369,17 +385,6 @@ if "${YQ_BIN}" -e '.services.kasm_manager' /opt/kasm/current/docker/docker-compo
     fi
 else
     log_succes "V-235808" "kasm_manager is read only"
-fi
-
-# Share changes
-if "${YQ_BIN}" -e '.services.kasm_share' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [[ ! -d "/opt/kasm/current/tmp/kasm_share" ]] ; then
-    if "${YQ_BIN}" -e '.services.kasm_share.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        log_succes "V-235808" "kasm_share is read only"
-    else
-        log_failure "V-235808" "kasm_share is not read only"
-    fi
-else
-    log_succes "V-235808" "kasm_share is read only"
 fi
 
 # Database changes
@@ -492,7 +497,7 @@ fi
 # Force user mode on all containers V-235830
 # If the kernel version is < 4.11 and the port to be mapped is 443 we can't update the user
 # (making the assumption no other port under 1024 is likely to be mapped)
-CONTAINERS_TO_CHANGE=('proxy' 'kasm_share' 'kasm_agent' 'db')
+CONTAINERS_TO_CHANGE=('proxy' 'kasm_agent' 'db')
 # kasm_api, kasm_guac, kasm_manager, kasm_rdp_gateway, kasm_rdp_https_gateway, and kasm_redis all pass this check without any modifcation.
 for container in "${CONTAINERS_TO_CHANGE[@]}"; do
     if [[ $container == 'proxy' && $("${YQ_BIN}" '.services.proxy | (. == null)' /opt/kasm/current/docker/docker-compose.yaml) == 'false' && $(kernel_version_greater_than_or_equal "4" "11") -eq 0 && $("${YQ_BIN}" '.services.proxy.ports.[] | ( . == "443:443")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
@@ -531,8 +536,6 @@ for container in "${CONTAINERS_TO_CHANGE[@]}"; do
                 RESTART_CONTAINERS="true"
                 if [[ $container == 'proxy' ]]; then
                     chown -R kasm:kasm /opt/kasm/current/log/nginx
-                elif [[ $container == 'kasm_share' ]]; then
-                    chown -R kasm:kasm /opt/kasm/current/log/share*
                 elif [[ $container == 'kasm_api' ]]; then
                     chown -R kasm:kasm /opt/kasm/current/log/api*
                     chown -R kasm:kasm /opt/kasm/current/log/admin_api*
@@ -559,22 +562,6 @@ done
 if [[ -n "${SHOW_ARTIFACT}" ]] ; then
     echo "Command:  docker ps -q -a | xargs docker inspect --format '{{ .Id }}: User={{ .Config.User }}' "
     echo "Output: $(docker ps -q -a | xargs docker inspect --format '{{ .Id }}: User={{ .Config.User }}')"
-fi
-
-# Rename nginx config for the share service, if exists
-if [[ -f /opt/kasm/current/conf/nginx/services.d/share_api.conf ]] ; then
-    mv /opt/kasm/current/conf/nginx/services.d/share_api.conf /opt/kasm/current/conf/nginx/services.d/share_api.bak
-    mv /opt/kasm/current/conf/nginx/upstream_share.conf /opt/kasm/current/conf/nginx/upstream_share.bak
-fi
-
-# Remove the Kasm_share container from docker compose
-if "${YQ_BIN}" -e '.services.kasm_share' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-    RESTART_CONTAINERS="true"
-    "${YQ_BIN}" eval -i 'del(.services.kasm_share)' /opt/kasm/current/docker/docker-compose.yaml
-    "${YQ_BIN}" eval -i 'del(.services.proxy.depends_on[] | select(. == "kasm_share"))' /opt/kasm/current/docker/docker-compose.yaml
-    if docker container inspect kasm_share > /dev/null 2>&1; then
-        docker container rm -f kasm_share
-    fi
 fi
 
 #### Restart containers if flagged ####
