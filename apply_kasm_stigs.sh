@@ -536,21 +536,11 @@ for container in "${CONTAINERS_TO_CHANGE[@]}"; do
                 RESTART_CONTAINERS="true"
                 if [[ $container == 'proxy' ]]; then
                     chown -R kasm:kasm /opt/kasm/current/log/nginx
-                elif [[ $container == 'kasm_api' ]]; then
-                    chown -R kasm:kasm /opt/kasm/current/log/api*
-                    chown -R kasm:kasm /opt/kasm/current/log/admin_api*
-                    chown -R kasm:kasm /opt/kasm/current/log/client_api*
-                    chown -R kasm:kasm /opt/kasm/current/log/subscription_api*
-                elif [[ $container == 'kasm_manager' ]]; then
-                    chown -R kasm:kasm /opt/kasm/current/log/manager_api*
-                    chown -R kasm:kasm /opt/kasm/current/log/web_filter_access*
+                    chown -R kasm:kasm /opt/kasm/current/certs/kasm_nginx*
                 elif [[ $container == 'kasm_agent' ]]; then
                     chown -R kasm:kasm /opt/kasm/current/log/agent*
                     chown -R kasm:kasm /opt/kasm/current/file_mappings*
                     chown -R kasm:kasm /opt/kasm/current/conf/app
-                fi
-                if [[ $container == 'proxy' ]]; then
-                    chown -R kasm:kasm /opt/kasm/current/certs/kasm_nginx*
                 fi
                 log_succes "V-235830" "Container ${container} set to run as kasm user ${KASM_UID}"
             else
