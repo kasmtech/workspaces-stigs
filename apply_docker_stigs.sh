@@ -221,7 +221,7 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $(docker ps --quiet --all | xargs docker inspect --format '{{ .Id }}: Ulimits={{ .HostConfig.Ulimits }}')"
 fi
 
-if [[ "$(jq -r '."log-opts"."max-size"' /etc/docker/daemon.json)" != 'null' ]] && [[ "$(jq -r '."log-opts"."max-file"' /etc/docker/daemon.json)" != 'null' ]] ; then
+if [[ "$(jq -r '."log-opts"."max-size"' /etc/docker/daemon.json)" != 'null' ]] && [[ "$(jq -r '."log-opts"."max-file"' /etc/docker/daemon.json)" != 'null' ]]; then
     log_manual "V-235786" "Manually set max-size and max-file in the daemon.json file, if the version of Docker that is installed supports this feature."
 else
     log_manual "V-235786" "Manually set max-size and max-file in the daemon.json file, if the version of Docker that is installed supports this feature."
