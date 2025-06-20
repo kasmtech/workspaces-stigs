@@ -68,7 +68,7 @@ read -rp "Please verify that $PRI_IP is the IP address that docker should bind t
             echo "Cannot continue, manually set the PRI_INTERFACE and PRI_IP variables in the script as desired."
             exit 1
             ;;
-      * )
+        * )
             echo "Invalid Response"
             echo "Installation cannot continue"
             exit 1
