@@ -210,7 +210,7 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $(docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | xargs docker inspect --format '{{ .Id }}: SecurityOpt={{ .HostConfig.SecurityOpt }}')"
 fi
 
-if docker ps --quiet --all | xargs --no-run-if-empty -- docker inspect --format '{{ .Id }}: Ulimits={{ .HostConfig.Ulimits }}' 2>/dev/null | grep -v "no value" ; then
+if docker ps --quiet --all | xargs --no-run-if-empty -- docker inspect --format '{{ .Id }}: Ulimits={{ .HostConfig.Ulimits }}' 2>/dev/null | grep -v "no value"; then
     log_failure "V-235844" "container overrides ulimit"
 else
 	log_succes "V-235844" "no containers override default ulimit"
@@ -316,7 +316,7 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $(grep -Pi '"ip"\s*:\s*"[^0]' /etc/docker/daemon.json)"
 fi
 
-if docker ps --quiet --all | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: AppArmorProfile={{ .AppArmorProfile }}' | grep -i "AppArmorProfile=unconfined" ; then
+if docker ps --quiet --all | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: AppArmorProfile={{ .AppArmorProfile }}' | grep -i "AppArmorProfile=unconfined"; then
     log_failure 'V-235799' 'containers present running without apparmor'
 else
     log_succes 'V-235799' 'all containers running with apparmor profiles'
