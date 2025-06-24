@@ -69,11 +69,6 @@ log_manual() {
     printf %b "$1, ${CON_ORANGE}MANUAL${CON_NC}, $2\n"
 }
 
-if [[ $EUID -ne 0 ]]; then
-    echo "This script must be run as root"
-    exit 1
-fi
-
 DOCKER_DAEMON_JSON_PATH=/etc/docker/daemon.json
 DOCKER_SOCK_PATH=/run/containerd/containerd.sock
 DOCKER_LEGACY_CONF=/etc/default/docker
