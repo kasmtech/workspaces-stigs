@@ -246,7 +246,7 @@ if [[ ! -d "/opt/kasm/current/certs/docker" ]]  && "${YQ_BIN}" -e '.services.kas
     cp /tmp/daemon.json.tmp /etc/docker/daemon.json
     rm /tmp/daemon.json.tmp
     mkdir -p /etc/systemd/system/docker.service.d/
-    if [[ -f /etc/systemd/system/docker.service.d/override.conf ]]; then
+    if [[ ! -f /etc/systemd/system/docker.service.d/override.conf ]]; then
     cat >/etc/systemd/system/docker.service.d/override.conf <<EOL
 [Service]
 ExecStart=
