@@ -246,11 +246,17 @@ if [[ ! -d "/opt/kasm/current/certs/docker" ]]  && "${YQ_BIN}" -e '.services.kas
     cp /tmp/daemon.json.tmp /etc/docker/daemon.json
     rm /tmp/daemon.json.tmp
     mkdir -p /etc/systemd/system/docker.service.d/
+    if [[ -f /etc/systemd/system/docker.service.d/override.conf ]]; then
     cat >/etc/systemd/system/docker.service.d/override.conf <<EOL
 [Service]
 ExecStart=
 ExecStart=/usr/bin/dockerd --containerd=/run/containerd/containerd.sock
 EOL
+    elif [[ -f /etc/systemd/system/docker.service.d/override.conf ]] && grep -q '\[Service\]' "/etc/systemd/system/docker.service.d/override.conf"; then
+        sed -i '/[Service]/a ExecStart=\nExecStart=/usr/bin/dockerd --containerd=/run/containerd/containerd.sock' /etc/systemd/system/docker.service.d/override.conf
+    else
+        echo -e '[Service]\nExecStart=\nExecStart=/usr/bin/dockerd --containerd=/run/containerd/containerd.sock' >> /etc/systemd/system/docker.service.d/override.conf
+    fi
     systemctl daemon-reload
     systemctl restart docker
     # Agent modifications
