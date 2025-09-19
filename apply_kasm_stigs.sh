@@ -260,7 +260,7 @@ EOL
     systemctl daemon-reload
     systemctl restart docker
     # Agent modifications
-    "${YQ_BIN}" -i 'del(.services.kasm_agent.volumes[1])| .services.kasm_agent *= { "environment": {"DOCKER_HOST": "tcp://'"${PRI_IP}"':2375", "DOCKER_CERT_PATH": "/opt/kasm/current/certs/docker", "DOCKER_TLS_VERIFY": "1"}}' /opt/kasm/current/docker/docker-compose.yaml
+    "${YQ_BIN}" -i 'del(.services.kasm_agent.volumes[]| select(. == "/var/run/docker.sock:/var/run/docker.sock")) | .services.kasm_agent *= { "environment": {"DOCKER_HOST": "tcp://'"${PRI_IP}"':2375", "DOCKER_CERT_PATH": "/opt/kasm/current/certs/docker", "DOCKER_TLS_VERIFY": "1"}}' /opt/kasm/current/docker/docker-compose.yaml
     RESTART_CONTAINERS="true"
     # Done
     log_succes "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
