@@ -157,24 +157,7 @@ if "${YQ_BIN}" -e '.services[].restart' /opt/kasm/current/docker/docker-compose.
     "${YQ_BIN}" -i 'del(.services[].restart) | .services.[] *= {
         "deploy": {"restart_policy": {"condition": "on-failure", "delay": "15s", "max_attempts": 5, "window": "60s"}}
     }' /opt/kasm/current/docker/docker-compose.yaml
-
-    # Extended policy + startup grace for HTTPS gateway
-    if "${YQ_BIN}" -e '.services.kasm_rdp_https_gateway' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.deploy.restart_policy = {
-            "condition": "on-failure", "delay": "60s", "max_attempts": 5, "window": "5m"
-        }' /opt/kasm/current/docker/docker-compose.yaml
-        "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.healthcheck.start_period = "60s"' /opt/kasm/current/docker/docker-compose.yaml
-        echo 'TRIAL: applied extended restart policy + 60s start_period to kasm_rdp_https_gateway'
-    fi
-
-    # # Debugging: extend proxy too since it depends on HTTPS gateway
-    # if "${YQ_BIN}" -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-    #     "${YQ_BIN}" -i '.services.proxy.deploy.restart_policy = {
-    #         "condition": "on-failure", "delay": "10s", "max_attempts": 30, "window": "5m"
-    #     }' /opt/kasm/current/docker/docker-compose.yaml
-    #     echo 'TRIAL: applied extended restart policy to kasm_proxy'
-    # fi
-
+    
     RESTART_CONTAINERS="true"
     log_succes "V-235843" "restart limits have been set on containers"
 else
