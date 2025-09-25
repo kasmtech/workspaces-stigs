@@ -153,8 +153,8 @@ fi
 
 # Set restart policy for service containers V-235843
 if "${YQ_BIN}" -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-    "${YQ_BIN}" -i 'del(.services[].restart) | .services.[] *= {"deploy": {"restart_policy": {"condition": "on-failure", "delay": "15s", "max_attempts": 5, "window": "60s"}}}' /opt/kasm/current/docker/docker-compose.yaml
-
+    "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.entrypoint = ["/bin/sh","-c","sleep 60 && exec /opt/rdpgw/rdpgw"]' /opt/kasm/current/docker/docker-compose.yaml
+    "${YQ_BIN}" -i '(.services[].restart) = "on-failure:5"' /opt/kasm/current/docker/docker-compose.yaml 
     RESTART_CONTAINERS="true"
     log_succes "V-235843" "restart limits have been set on containers"
 else
