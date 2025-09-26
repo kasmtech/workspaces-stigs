@@ -200,7 +200,7 @@ fi
 
 # Set pid limits for all containers V-235828
 if ! "${YQ_BIN}" -e '.services[].pids_limit' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-    "${YQ_BIN}" -i '.services.[] += {"pids_limit": 100}' /opt/kasm/current/docker/docker-compose.yaml
+    "${YQ_BIN}" -i '.services.[] += {"pids_limit": 400}' /opt/kasm/current/docker/docker-compose.yaml
     if "${YQ_BIN}" -e '.services.kasm_guac' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
         "${YQ_BIN}" -i '.services.kasm_guac.pids_limit = 1000' /opt/kasm/current/docker/docker-compose.yaml
     fi
