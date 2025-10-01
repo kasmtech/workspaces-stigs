@@ -51,7 +51,7 @@ CON_RED='\033[0;31m'
 CON_GREEN='\033[0;32m'
 CON_ORANGE='\033[0;33m'
 CON_NC='\033[0m' # No Color
-KASM_VERSION='1.17.0'
+KASM_VERSION='1.18.0'
 NUM_CPUS=$(nproc)
 CPU_LIMIT=4
 TOTAL_MEM=$(free -g -h -t | grep "Mem:" | awk '{print $2}')
@@ -129,15 +129,18 @@ log_manual() {
 }
 
 # Set cpu and memory limitations for service containers V-235807, V-235806
-if ! "${YQ_BIN}" -e '.services[].deploy.resources.limits' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+if ! "${YQ_BIN}" -e '.services[].mem_limit' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
     for key in $("${YQ_BIN}" '.services | keys | .[]' /opt/kasm/current/docker/docker-compose.yaml); do
-        if [[ "${key}" =~ db ]]; then
-            "${YQ_BIN}" -i '.services."'"${key}"'" += {"deploy": {"resources": {"limits": {"cpus": "'"${NUM_CPUS}"'", "memory": "'"${MEMORY}"'G"}}}}' /opt/kasm/current/docker/docker-compose.yaml
+       if [[ "${key}" =~ db ]]; then
+            "${YQ_BIN}" -i '.services."'"${key}"'".cpus = "'"${NUM_CPUS}"'"' /opt/kasm/current/docker/docker-compose.yaml
+            "${YQ_BIN}" -i '.services."'"${key}"'".mem_limit = "'"${MEMORY}"'G"' /opt/kasm/current/docker/docker-compose.yaml
         else
             if [[ "$CPU_LIMIT" -gt "$NUM_CPUS" ]]; then
-                "${YQ_BIN}" -i '.services."'"${key}"'" += {"deploy": {"resources": {"limits": {"cpus": "'"${NUM_CPUS}"'", "memory": "2G"}}}}' /opt/kasm/current/docker/docker-compose.yaml
+                "${YQ_BIN}" -i '.services."'"${key}"'".cpus = "'"${NUM_CPUS}"'"' /opt/kasm/current/docker/docker-compose.yaml
+                "${YQ_BIN}" -i '.services."'"${key}"'".mem_limit = "2G"' /opt/kasm/current/docker/docker-compose.yaml
             else
-                "${YQ_BIN}" -i '.services."'"${key}"'" += {"deploy": {"resources": {"limits": {"cpus": "'"${CPU_LIMIT}"'", "memory": "2G"}}}}' /opt/kasm/current/docker/docker-compose.yaml
+                "${YQ_BIN}" -i '.services."'"${key}"'".cpus = "'"${CPU_LIMIT}"'"' /opt/kasm/current/docker/docker-compose.yaml
+                "${YQ_BIN}" -i '.services."'"${key}"'".mem_limit = "2G"' /opt/kasm/current/docker/docker-compose.yaml
             fi
         fi
     done
@@ -147,21 +150,23 @@ else
     log_succes "V-235807,V-235806" "CPU and memory limits have been set"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
-    echo "Command: ${YQ_BIN} -e '.services[].deploy.resources.limits' /opt/kasm/current/docker/docker-compose.yaml "
-    echo "Output: $("${YQ_BIN}" -e '.services[].deploy.resources.limits' /opt/kasm/current/docker/docker-compose.yaml )"
+    echo "Command: ${YQ_BIN} -e '.services[].mem_limit, .services[].cpus' /opt/kasm/current/docker/docker-compose.yaml"
+    echo "Output: $( "${YQ_BIN}" -e '.services[].mem_limit, .services[].cpus' /opt/kasm/current/docker/docker-compose.yaml )"
 fi
 
 # Set restart policy for service containers V-235843
+# adding a mannual delay of 60 sec on rdpgw https , since it requires healthy manager
 if "${YQ_BIN}" -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-    "${YQ_BIN}" -i 'del(.services[].restart) | .services.[] *= {"deploy": {"restart_policy": {"condition": "on-failure", "delay": "5s", "max_attempts": 5, "window": "20s" }}}' /opt/kasm/current/docker/docker-compose.yaml
+    "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.entrypoint = ["/bin/sh","-c","sleep 60 && exec /opt/rdpgw/rdpgw"]' /opt/kasm/current/docker/docker-compose.yaml
+    "${YQ_BIN}" -i '(.services[].restart) = "on-failure:5"' /opt/kasm/current/docker/docker-compose.yaml
     RESTART_CONTAINERS="true"
     log_succes "V-235843" "restart limits have been set on containers"
 else
     log_succes "V-235843" "restart limits have been set on containers"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
-    echo "Command: ${YQ_BIN} -e '.services[].deploy.restart_policy' /opt/kasm/current/docker/docker-compose.yaml "
-    echo "Output: $( "${YQ_BIN}" -e '.services[].deploy.restart_policy' /opt/kasm/current/docker/docker-compose.yaml)"
+    echo "Command: ${YQ_BIN} -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml "
+    echo "Output: $( "${YQ_BIN}" -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml)"
 fi
 
 # Set no new privilages for all containers V-235816
@@ -196,10 +201,8 @@ fi
 # Set pid limits for all containers V-235828
 if ! "${YQ_BIN}" -e '.services[].pids_limit' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
     "${YQ_BIN}" -i '.services.[] += {"pids_limit": 1000}' /opt/kasm/current/docker/docker-compose.yaml
-    "${YQ_BIN}" -i '.services.[].deploy.resources.limits += {"pids": 1000}' /opt/kasm/current/docker/docker-compose.yaml
     if "${YQ_BIN}" -e '.services.kasm_guac' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        "${YQ_BIN}" -i '.services.kasm_guac += {"pids_limit": 1000}' /opt/kasm/current/docker/docker-compose.yaml
-        "${YQ_BIN}" -i '.services.kasm_guac.deploy.resources.limits += {"pids": 1000}' /opt/kasm/current/docker/docker-compose.yaml
+        "${YQ_BIN}" -i '.services.kasm_guac.pids_limit = 1000' /opt/kasm/current/docker/docker-compose.yaml
     fi
     RESTART_CONTAINERS="true"
     log_succes "V-235828" "pid limit set for all containers"
