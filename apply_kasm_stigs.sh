@@ -157,7 +157,7 @@ fi
 # Set restart policy for service containers V-235843
 if "${YQ_BIN}" -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
     "${YQ_BIN}" -i '(.services[].restart) = "on-failure:5"' /opt/kasm/current/docker/docker-compose.yaml
-    # adding a manual delay of 60 sec on rdpgw https, since it requires healthy manager
+    # adding a manual delay of 60 sec on rdpgw https for single-server deploys, since it requires healthy manager
     if "${YQ_BIN}" -e '.services.kasm_rdp_https_gateway' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && "${YQ_BIN}" -e '.services.kasm_manager' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
         "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.entrypoint = ["/bin/sh","-c","sleep 60 && exec /opt/rdpgw/rdpgw"]' /opt/kasm/current/docker/docker-compose.yaml
     fi
