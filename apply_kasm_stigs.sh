@@ -151,21 +151,23 @@ else
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: ${YQ_BIN} -e '.services[].mem_limit, .services[].cpus' /opt/kasm/current/docker/docker-compose.yaml"
-    echo "Output: $( "${YQ_BIN}" -e '.services[].mem_limit, .services[].cpus' /opt/kasm/current/docker/docker-compose.yaml )"
+    echo "Output: $("${YQ_BIN}" -e '.services[].mem_limit, .services[].cpus' /opt/kasm/current/docker/docker-compose.yaml )"
 fi
 
 # Set restart policy for service containers V-235843
-# adding a mannual delay of 60 sec on rdpgw https , since it requires healthy manager
 if "${YQ_BIN}" -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-    "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.entrypoint = ["/bin/sh","-c","sleep 60 && exec /opt/rdpgw/rdpgw"]' /opt/kasm/current/docker/docker-compose.yaml
     "${YQ_BIN}" -i '(.services[].restart) = "on-failure:5"' /opt/kasm/current/docker/docker-compose.yaml
+    # adding a manual delay of 60 sec on rdpgw https for single-server deploys, since it requires healthy manager
+    if "${YQ_BIN}" -e '.services.kasm_rdp_https_gateway' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && "${YQ_BIN}" -e '.services.kasm_manager' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
+        "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.entrypoint = ["/bin/sh","-c","sleep 60 && exec /opt/rdpgw/rdpgw"]' /opt/kasm/current/docker/docker-compose.yaml
+    fi
     RESTART_CONTAINERS="true"
     log_succes "V-235843" "restart limits have been set on containers"
 else
     log_succes "V-235843" "restart limits have been set on containers"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
-    echo "Command: ${YQ_BIN} -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml "
+    echo "Command: ${YQ_BIN} -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml"
     echo "Output: $( "${YQ_BIN}" -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml)"
 fi
 
