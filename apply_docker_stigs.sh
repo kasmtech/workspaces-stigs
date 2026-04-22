@@ -511,10 +511,14 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $(docker version --format '{{ .Server.Experimental }}' | grep false)"
 fi
 
-if jq -e '."log-driver" == "syslog"' /etc/docker/daemon.json | grep --quiet true; then
+# enforce the Kasm logging plugin as the log driver if installed, otherwise fall back to syslog
+KASM_LOGGER_PLUGIN=$(docker plugin ls --format '{{.Name}}' 2>/dev/null | grep '^kasmweb/logger' | head -1)
+LOG_DRIVER="${KASM_LOGGER_PLUGIN:-syslog}"
+
+if jq -e --arg driver "${LOG_DRIVER}" '."log-driver" == $driver' /etc/docker/daemon.json | grep --quiet true; then
     log_succes "V-235831" "log driver is enabled"
 else
-    jq '. + {"log-driver": "syslog"}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
+    jq --arg driver "${LOG_DRIVER}" '. + {"log-driver": $driver}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
     cp /tmp/daemon.json.tmp /etc/docker/daemon.json
     rm /tmp/daemon.json.tmp
     log_succes "V-235831" "log driver has been configured in script"
@@ -524,13 +528,17 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $(cat ${DOCKER_DAEMON_JSON_PATH} | grep -i log-driver)"
 fi
 
-if ! grep --quiet "syslog-address" /etc/docker/daemon.json; then
-    jq '. + {"log-opts": {"syslog-address": "udp://127.0.0.1:25224", "tag": "container_name/{{.Name}}", "syslog-facility": "daemon" }}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
-    cp /tmp/daemon.json.tmp /etc/docker/daemon.json
-    rm /tmp/daemon.json.tmp
-    log_succes "V-235833" "Script configured docker daemon remote syslog settings"
+if jq -e '."log-driver" == "syslog"' /etc/docker/daemon.json | grep --quiet true; then
+    if ! grep --quiet "syslog-address" /etc/docker/daemon.json; then
+        jq '. + {"log-opts": {"syslog-address": "udp://127.0.0.1:25224", "tag": "container_name/{{.Name}}", "syslog-facility": "daemon" }}' /etc/docker/daemon.json > /tmp/daemon.json.tmp
+        cp /tmp/daemon.json.tmp /etc/docker/daemon.json
+        rm /tmp/daemon.json.tmp
+        log_succes "V-235833" "Script configured docker daemon remote syslog settings"
+    else
+        log_succes "V-235833" "Remote syslog already configured"
+    fi
 else
-    log_succes "V-235833" "Remote syslog already configured"
+    log_na "V-235833" "Non-syslog log driver configured; syslog-address not applicable"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: cat ${DOCKER_DAEMON_JSON_PATH} | grep -i log-driver"
