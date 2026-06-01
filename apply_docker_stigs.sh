@@ -2,8 +2,12 @@
 
 set -e
 
-## Colors
-CMD="\e[0;34m"
+# Colours
+CMD='\e[0;34m'
+CMDB='\e[1;34m'
+DBG='\e[2;30m'
+WRN='\e[0;33m'
+ERR='\e[0;31m'
 OK='\e[0;32m'
 NC='\e[0m'
 
@@ -47,26 +51,21 @@ command -v jq >/dev/null 2>&1 || { echo >&2 "The jq package is required, please 
 command -v auditctl >/dev/null 2>&1 || { echo >&2 "The audit package is required, please install and restart the script. Aborting."; exit 1; }
 command -v ausearch >/dev/null 2>&1 || { echo >&2 "The audit package is required, please install and restart the script. Aborting."; exit 1; }
 
-CON_RED='\033[0;31m'
-CON_GREEN='\033[0;32m'
-CON_ORANGE='\033[0;33m'
-CON_NC='\033[0m' # No Color
-
 # Pretty logging
 log_succes() {
-    printf %b "$1, ${CON_GREEN}PASS${CON_NC}, $2\n"
+    printf %b "$1, ${OK}PASS${NC}, $2\n"
 }
 
 log_failure() {
-    printf %b "$1, ${CON_RED}FAIL${CON_NC}, $2\n"
+    printf %b "$1, ${ERR}FAIL${NC}, $2\n"
 }
 
 log_na() {
-    printf %b "$1, ${CON_ORANGE}N/A${CON_NC}, $2\n"
+    printf %b "$1, ${WRN}N/A${NC}, $2\n"
 }
 
 log_manual() {
-    printf %b "$1, ${CON_ORANGE}MANUAL${CON_NC}, $2\n"
+    printf %b "$1, ${WRN}MANUAL${NC}, $2\n"
 }
 
 DOCKER_DAEMON_JSON_PATH=/etc/docker/daemon.json

@@ -2,8 +2,12 @@
 
 set -e
 
-## Colors
-CMD="\e[0;34m"
+# Colours
+CMD='\e[0;34m'
+CMDB='\e[1;34m'
+DBG='\e[2;30m'
+WRN='\e[0;33m'
+ERR='\e[0;31m'
 OK='\e[0;32m'
 NC='\e[0m'
 
@@ -47,11 +51,7 @@ YQ_BIN="/opt/kasm/bin/utils/yq_$(uname -m)"
 PRI_INTERFACE=$(ip route | grep -m 1 'default via' | grep -Po '(?<=dev )\S+')
 PRI_IP=$(ip -f inet addr show "$PRI_INTERFACE" | grep -Po '(?<=inet )(\d{1,3}\.)+\d{1,3}')
 RESTART_CONTAINERS="false"
-CON_RED='\033[0;31m'
-CON_GREEN='\033[0;32m'
-CON_ORANGE='\033[0;33m'
-CON_NC='\033[0m' # No Color
-KASM_VERSION='1.18.1'
+KASM_VERSION='1.19.0'
 NUM_CPUS=$(nproc)
 CPU_LIMIT=4
 TOTAL_MEM=$(free -g -h -t | grep "Mem:" | awk '{print $2}')
@@ -113,19 +113,19 @@ kernel_version_greater_than_or_equal() {
 
 # Pretty logging
 log_succes() {
-    printf %b "$1, ${CON_GREEN}PASS${CON_NC}, $2\n"
+    printf %b "$1, ${OK}PASS${NC}, $2\n"
 }
 
 log_failure() {
-    printf %b "$1, ${CON_RED}FAIL${CON_NC}, $2\n"
+    printf %b "$1, ${ERR}FAIL${NC}, $2\n"
 }
 
 log_na() {
-    printf %b "$1, ${CON_ORANGE}N/A${CON_NC}, $2\n"
+    printf %b "$1, ${WRN}N/A${NC}, $2\n"
 }
 
 log_manual() {
-    printf %b "$1, ${CON_ORANGE}MANUAL${CON_NC}, $2\n"
+    printf %b "$1, ${WRN}MANUAL${NC}, $2\n"
 }
 
 # Set cpu and memory limitations for service containers V-235807, V-235806
@@ -399,7 +399,7 @@ else
         RESTART_CONTAINERS="true"
         success=1
     else
-        if [[ $("${YQ_BIN}" '.services.db.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/") | (. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
+        if ! "${YQ_BIN}" -e '.services.db.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
             log_failure "V-235808 couldn't find tmp volume to update for the database container"
             success=0
         else
@@ -408,7 +408,7 @@ else
             success=1
         fi
     fi
-    if [[ $("${YQ_BIN}" '.services.db.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db_run/:/var/run/postgresql/") | (. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db_run/:/var/run/postgresql/")' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]] && [[ "$success" -eq "1" ]]; then
+    if ! "${YQ_BIN}" -e '.services.db.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db_run/:/var/run/postgresql/")' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null && [[ "${success}" -eq "1" ]]; then
         "${YQ_BIN}" -i '.services.db.volumes += "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db_run/:/var/run/postgresql/"' /opt/kasm/current/docker/docker-compose.yaml
         success=1
     fi
@@ -471,10 +471,10 @@ fi
 CONTAINERS_TO_CHANGE=('proxy' 'kasm_agent' 'db')
 # kasm_api, kasm_guac, kasm_manager, kasm_rdp_gateway, kasm_rdp_https_gateway all pass this check without any modifcation.
 for container in "${CONTAINERS_TO_CHANGE[@]}"; do
-    if [[ $container == 'proxy' && $("${YQ_BIN}" '.services.proxy | (. == null)' /opt/kasm/current/docker/docker-compose.yaml) == 'false' && $(kernel_version_greater_than_or_equal "4" "11") -eq 0 && $("${YQ_BIN}" '.services.proxy.ports.[] | ( . == "443:443")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
+    if [[ ${container} == 'proxy' ]] && ! "${YQ_BIN}" -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null && [[ $(kernel_version_greater_than_or_equal "4" "11") -eq 0 ]] && [[ $("${YQ_BIN}" '.services.proxy.ports.[] | ( . == "443:443")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
         log_failure "V-235830" "Proxy container cannot be set to run as kasm user ${KASM_UID}. Please update the OS kernel or change the port Kasm proxy listens on"
-    elif [[ $container == 'db' && $("${YQ_BIN}" '.services.'"${container}"' | (. == null)' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
-        if [[ $("${YQ_BIN}" '.services.'"${container}"'.user | (. == "70:70")' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
+    elif [[ ${container} == 'db' ]] && ! "${YQ_BIN}" -e '.services.'"${container}"'' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
+        if ! "${YQ_BIN}" -e '.services.'"${container}"'.user | (. == "70:70")' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
             "${YQ_BIN}" -i '.services.'"${container}"'.user = "70:70"' /opt/kasm/current/docker/docker-compose.yaml
         fi
         if [[ ! -d "/opt/kasm/current/tmp/kasm_db" ]]; then
@@ -492,23 +492,23 @@ for container in "${CONTAINERS_TO_CHANGE[@]}"; do
         if [[ $("${YQ_BIN}" '.services.'"${container}"'.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/") | (. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
             "${YQ_BIN}" -i 'del(.services.'"${container}"'.volumes[] | select(. == "/opt/kasm/'${KASM_VERSION}'/conf/database/:/tmp/")) | .services.'"${container}"'.volumes += "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/"' /opt/kasm/current/docker/docker-compose.yaml
         else
-            if [[ $("${YQ_BIN}" '.services.'"${container}"'.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/") | (. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
+            if ! "${YQ_BIN}" -e '.services.'"${container}"'.volumes.[] | select(. == "/opt/kasm/'${KASM_VERSION}'/tmp/kasm_db/:/tmp/")' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
                 log_failure "V-235830 couldn't find tmp volumne to update for the database contaioner"
                 continue
             fi
         fi
         log_succes "V-235830" "Container db set to run as postgresql user 70"
     else
-        if [[ $("${YQ_BIN}" '.services.'"${container}"' | (. == null)' /opt/kasm/current/docker/docker-compose.yaml) == 'false' ]]; then
+        if ! "${YQ_BIN}" -e '.services.'"${container}"'' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
             USEROUT=$("${YQ_BIN}" '.services.'"${container}"'.user' /opt/kasm/current/docker/docker-compose.yaml)
             # shellcheck disable=SC2016
             if [[ ! "${USEROUT}" == *'${KASM_UID?}:${KASM_GID?}'* ]]; then
                 "${YQ_BIN}" -i '.services.'"${container}"'.user = "${KASM_UID?}:${KASM_GID?}"' /opt/kasm/current/docker/docker-compose.yaml
                 RESTART_CONTAINERS="true"
-                if [[ $container == 'proxy' ]]; then
+                if [[ ${container} == 'proxy' ]]; then
                     chown -R kasm:kasm /opt/kasm/current/log/nginx
                     chown -R kasm:kasm /opt/kasm/current/certs/kasm_nginx*
-                elif [[ $container == 'kasm_agent' ]]; then
+                elif [[ ${container} == 'kasm_agent' ]]; then
                     chown -R kasm:kasm /opt/kasm/current/log/agent*
                     chown -R kasm:kasm /opt/kasm/current/file_mappings*
                     chown -R kasm:kasm /opt/kasm/current/conf/app
