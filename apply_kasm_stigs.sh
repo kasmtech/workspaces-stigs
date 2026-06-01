@@ -112,7 +112,7 @@ kernel_version_greater_than_or_equal() {
 }
 
 # Pretty logging
-log_succes() {
+log_success() {
     printf %b "$1, ${OK}PASS${NC}, $2\n"
 }
 
@@ -145,9 +145,9 @@ if ! "${YQ_BIN}" -e '.services[].mem_limit' /opt/kasm/current/docker/docker-comp
         fi
     done
     RESTART_CONTAINERS="true"
-    log_succes "V-235807,V-235806" "CPU and memory limits have been set"
+    log_success "V-235807,V-235806" "CPU and memory limits have been set"
 else
-    log_succes "V-235807,V-235806" "CPU and memory limits have been set"
+    log_success "V-235807,V-235806" "CPU and memory limits have been set"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: ${YQ_BIN} -e '.services[].mem_limit, .services[].cpus' /opt/kasm/current/docker/docker-compose.yaml"
@@ -162,9 +162,9 @@ if "${YQ_BIN}" -e '.services[].restart' /opt/kasm/current/docker/docker-compose.
         "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.entrypoint = ["/bin/sh","-c","sleep 60 && exec /opt/rdpgw/rdpgw"]' /opt/kasm/current/docker/docker-compose.yaml
     fi
     RESTART_CONTAINERS="true"
-    log_succes "V-235843" "restart limits have been set on containers"
+    log_success "V-235843" "restart limits have been set on containers"
 else
-    log_succes "V-235843" "restart limits have been set on containers"
+    log_success "V-235843" "restart limits have been set on containers"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: ${YQ_BIN} -e '.services[].restart' /opt/kasm/current/docker/docker-compose.yaml"
@@ -175,9 +175,9 @@ fi
 if ! "${YQ_BIN}" -e '.services[].security_opt' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
     "${YQ_BIN}" -i '.services.[] *= {"security_opt": ["no-new-privileges"]}' /opt/kasm/current/docker/docker-compose.yaml
     RESTART_CONTAINERS="true"
-    log_succes "V-235816" "security-opt no-new-privileges has been set for all containers"
+    log_success "V-235816" "security-opt no-new-privileges has been set for all containers"
 else
-    log_succes "V-235816" "security-opt no-new-privileges has been set for all containers"
+    log_success "V-235816" "security-opt no-new-privileges has been set for all containers"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: ${YQ_BIN} -e '.services[].security_opt' /opt/kasm/current/docker/docker-compose.yaml "
@@ -190,9 +190,9 @@ if "${YQ_BIN}" -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml
         PORTS="$("${YQ_BIN}" -e '.services.proxy.ports[0]' /opt/kasm/current/docker/docker-compose.yaml | grep -Po '\d+:\d+$')"
         "${YQ_BIN}" -i ".services.proxy.ports[0] = \"${PRI_IP}:${PORTS}\"" /opt/kasm/current/docker/docker-compose.yaml
         RESTART_CONTAINERS="true"
-        log_succes "V-235820" "Incoming container traffic has been bound to ${PRI_IP}"
+        log_success "V-235820" "Incoming container traffic has been bound to ${PRI_IP}"
     else
-        log_succes "V-235820" "Incoming container traffic has been bound to ${PRI_IP}"
+        log_success "V-235820" "Incoming container traffic has been bound to ${PRI_IP}"
     fi
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
@@ -207,9 +207,9 @@ if ! "${YQ_BIN}" -e '.services[].pids_limit' /opt/kasm/current/docker/docker-com
         "${YQ_BIN}" -i '.services.kasm_guac.pids_limit = 1000' /opt/kasm/current/docker/docker-compose.yaml
     fi
     RESTART_CONTAINERS="true"
-    log_succes "V-235828" "pid limit set for all containers"
+    log_success "V-235828" "pid limit set for all containers"
 else
-    log_succes "V-235828" "pid limit set for all containers"
+    log_success "V-235828" "pid limit set for all containers"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: ${YQ_BIN} -e '.services[].pids_limit' /opt/kasm/current/docker/docker-compose.yaml "
@@ -268,11 +268,11 @@ EOL
     "${YQ_BIN}" -i 'del(.services.kasm_agent.volumes[]| select(. == "/var/run/docker.sock:/var/run/docker.sock")) | .services.kasm_agent *= { "environment": {"DOCKER_HOST": "tcp://'"${PRI_IP}"':2375", "DOCKER_CERT_PATH": "/opt/kasm/current/certs/docker", "DOCKER_TLS_VERIFY": "1"}}' /opt/kasm/current/docker/docker-compose.yaml
     RESTART_CONTAINERS="true"
     # Done
-    log_succes "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
+    log_success "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
 elif [[ -d "/opt/kasm/current/certs/docker" ]]  && "${YQ_BIN}" -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null; then
-    log_succes "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
+    log_success "V-235818" "this host and agent are configured to use docker over tcp with TLS auth"
 else
-    log_succes "V-235818" "this host does not have an agent on it"
+    log_success "V-235818" "this host does not have an agent on it"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: ${YQ_BIN} -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml "
@@ -285,7 +285,7 @@ if "${YQ_BIN}" -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose
     DOCKER_SSL_CA=/etc/docker/certs/ca.pem
     if [[ -f "$DOCKER_SSL_CERT" ]]; then
         chown root:root $DOCKER_SSL_CERT
-        log_succes "V-235861" "$DOCKER_SSL_CERT owned by root:root"
+        log_success "V-235861" "$DOCKER_SSL_CERT owned by root:root"
         if [[ -n "${SHOW_ARTIFACT}" ]]; then
             echo "Command: stat -c %U:%G $DOCKER_SSL_CERT "
             echo "Output: $(stat -c %U:%G $DOCKER_SSL_CERT)"
@@ -296,7 +296,7 @@ if "${YQ_BIN}" -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose
 
     if [[ -f "$DOCKER_SSL_KEY" ]]; then
         chmod 400 $DOCKER_SSL_KEY
-        log_succes "V-235864" "$DOCKER_SSL_KEY permissions set to 0400"
+        log_success "V-235864" "$DOCKER_SSL_KEY permissions set to 0400"
         if [[ -n "${SHOW_ARTIFACT}" ]]; then
             echo "Command: stat -c %U:%G $DOCKER_SSL_KEY "
             echo "Output: $(stat -c %U:%G $DOCKER_SSL_KEY)"
@@ -307,7 +307,7 @@ if "${YQ_BIN}" -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose
 
     if [[ -f "$DOCKER_SSL_CA" ]]; then
         chown root:root $DOCKER_SSL_CA
-        log_succes "V-235859" "$DOCKER_SSL_CA owned by root:root"
+        log_success "V-235859" "$DOCKER_SSL_CA owned by root:root"
         if [[ -n "${SHOW_ARTIFACT}" ]]; then
             echo "Command: stat -c %U:%G $DOCKER_SSL_CA "
             echo "Output: $(stat -c %U:%G $DOCKER_SSL_CA)"
@@ -316,7 +316,7 @@ if "${YQ_BIN}" -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose
         log_na "V-235859" "SSL CA does not exist"
     fi
     chown -R kasm:kasm "/opt/kasm/current/certs/docker"
-    log_succes "V-235859" "client certs are owned by kasm user"
+    log_success "V-235859" "client certs are owned by kasm user"
     if [[ -n "${SHOW_ARTIFACT}" ]]; then
         echo "Command: stat -c %U:%G '/opt/kasm/current/certs/docker' "
         echo "Output: $(stat -c %U:%G '/opt/kasm/current/certs/docker')"
@@ -328,19 +328,19 @@ fi
 # Agent changes
 if "${YQ_BIN}" -e '.services.kasm_agent' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [[ ! -d "/opt/kasm/current/tmp/kasm_agent" ]]; then
     if "${YQ_BIN}" -e '.services.kasm_agent.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        log_succes "V-235808" "kasm_agent is read only"
+        log_success "V-235808" "kasm_agent is read only"
     else
         log_failure "V-235808" "kasm_agent is not read only"
     fi
 else
-    log_succes "V-235808" "kasm_agent is read only"
+    log_success "V-235808" "kasm_agent is read only"
 fi
 
 # Proxy changes
 if "${YQ_BIN}" -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [[ ! -d "/opt/kasm/current/cache/nginx" ]]; then
     if "${YQ_BIN}" -e '.services.proxy.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1;
     then
-        log_succes "V-235808" "proxy is read only"
+        log_success "V-235808" "proxy is read only"
         if [[ -n "${SHOW_ARTIFACT}" ]]; then
             echo "Command: ${YQ_BIN} -e '.services.proxy.read_only' /opt/kasm/current/docker/docker-compose.yaml "
             echo "Output: $( "${YQ_BIN}" -e '.services.proxy.read_only' /opt/kasm/current/docker/docker-compose.yaml)"
@@ -350,27 +350,27 @@ if "${YQ_BIN}" -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml
         chown -R kasm:kasm /opt/kasm/current/cache
         "${YQ_BIN}" -i '.services.proxy.volumes += "/opt/kasm/current/cache/nginx:/var/cache/nginx" | .services.proxy += {"read_only": true} | .services.proxy += {"tmpfs": ["/var/run:uid='"${KASM_UID}"',gid='"${KASM_GID}"'"]}' /opt/kasm/current/docker/docker-compose.yaml
         RESTART_CONTAINERS="true"
-        log_succes "V-235808" "proxy is read only"
+        log_success "V-235808" "proxy is read only"
     fi
 else
-    log_succes "V-235808" "proxy is read only"
+    log_success "V-235808" "proxy is read only"
 fi
 
 # API changes
 if "${YQ_BIN}" -e '.services.kasm_api' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [[ ! -d "/opt/kasm/current/tmp/kasm_api" ]]; then
     if "${YQ_BIN}" -e '.services.kasm_api.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        log_succes "V-235808" "kasm_api is read only"
+        log_success "V-235808" "kasm_api is read only"
     else
         log_failure "V-235808" "kasm_api is not read only"
     fi
 else
-    log_succes "V-235808" "kasm_api is read only"
+    log_success "V-235808" "kasm_api is read only"
 fi
 
 # Manager Changes
 if "${YQ_BIN}" -e '.services.kasm_manager' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [[ ! -d "/opt/kasm/current/tmp/kasm_manager" ]]; then
     if "${YQ_BIN}" -e '.services.kasm_manager.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        log_succes "V-235808" "kasm_manager is read only"
+        log_success "V-235808" "kasm_manager is read only"
         if [[ -n "${SHOW_ARTIFACT}" ]]; then
             echo "Command: ${YQ_BIN} -e '.services.kasm_manager.read_only' /opt/kasm/current/docker/docker-compose.yaml "
             echo "Output: $("${YQ_BIN}" -e '.services.kasm_manager.read_only' /opt/kasm/current/docker/docker-compose.yaml)"
@@ -379,12 +379,12 @@ if "${YQ_BIN}" -e '.services.kasm_manager' /opt/kasm/current/docker/docker-compo
         log_failure "V-235808" "kasm_manager is not read only"
     fi
 else
-    log_succes "V-235808" "kasm_manager is read only"
+    log_success "V-235808" "kasm_manager is read only"
 fi
 
 # Database changes
 if "${YQ_BIN}" -e '.services.db' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && "${YQ_BIN}" -e '.services.db.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-    log_succes "V-235808" "kasm_db is read only"
+    log_success "V-235808" "kasm_db is read only"
 else
     success=1
     if [[ ! -d "/opt/kasm/current/tmp/kasm_db" ]]; then
@@ -413,41 +413,41 @@ else
         success=1
     fi
     if [[ "$success" -eq "1" ]]; then
-        log_succes "V-235808" "kasm_db is read only"
+        log_success "V-235808" "kasm_db is read only"
     fi
 fi
 
 # rdp_gateway changes
 if "${YQ_BIN}" -e '.services.rdp_gateway' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [[ ! -d "/opt/kasm/current/tmp/rdpgw" ]]; then
     if "${YQ_BIN}" -e '.services.rdp_gateway.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        log_succes "V-235808" "rdp_gateway is read only"
+        log_success "V-235808" "rdp_gateway is read only"
     else
         log_failure "V-235808" "rdp_gateway is not read only"
     fi
 else
-    log_succes "V-235808" "rdp_gateway is read only"
+    log_success "V-235808" "rdp_gateway is read only"
 fi
 
 # kasm_rdp_https_gateway changes
 if "${YQ_BIN}" -e '.services.kasm_rdp_https_gateway' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
     if "${YQ_BIN}" -e '.services.kasm_rdp_https_gateway.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        log_succes "V-235808" "kasm_rdp_https_gateway is read only"
+        log_success "V-235808" "kasm_rdp_https_gateway is read only"
     else
         log_failure "V-235808" "kasm_rdp_https_gateway is not read only"
     fi
 else
-    log_succes "V-235808" "kasm_rdp_https_gateway is read only"
+    log_success "V-235808" "kasm_rdp_https_gateway is read only"
 fi
 
 # guac changes
 if "${YQ_BIN}" -e '.services.kasm_guac' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1 && [[ ! -d "/opt/kasm/current/tmp/guac" ]]; then
     if "${YQ_BIN}" -e '.services.kasm_guac.read_only' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
-        log_succes "V-235808" "kasm_guac is read only"
+        log_success "V-235808" "kasm_guac is read only"
     else
         log_failure "V-235808" "kasm_guac is not read only"
     fi
 else
-    log_succes "V-235808" "kasm_guac is read only"
+    log_success "V-235808" "kasm_guac is read only"
 fi
 
 # Show output of all containers for v-235808
@@ -497,7 +497,7 @@ for container in "${CONTAINERS_TO_CHANGE[@]}"; do
                 continue
             fi
         fi
-        log_succes "V-235830" "Container db set to run as postgresql user 70"
+        log_success "V-235830" "Container db set to run as postgresql user 70"
     else
         if ! "${YQ_BIN}" -e '.services.'"${container}"'' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
             USEROUT=$("${YQ_BIN}" '.services.'"${container}"'.user' /opt/kasm/current/docker/docker-compose.yaml)
@@ -513,9 +513,9 @@ for container in "${CONTAINERS_TO_CHANGE[@]}"; do
                     chown -R kasm:kasm /opt/kasm/current/file_mappings*
                     chown -R kasm:kasm /opt/kasm/current/conf/app
                 fi
-                log_succes "V-235830" "Container ${container} set to run as kasm user ${KASM_UID}"
+                log_success "V-235830" "Container ${container} set to run as kasm user ${KASM_UID}"
             else
-                log_succes "V-235830" "Container ${container} set to run as kasm user ${KASM_UID}"
+                log_success "V-235830" "Container ${container} set to run as kasm user ${KASM_UID}"
             fi
         fi
     fi
@@ -536,7 +536,7 @@ fi
 for container_id in $(docker compose --project-directory /opt/kasm/current/docker/ ps -q  2>/dev/null); do
     container_name=$(docker inspect "$container_id" --format '{{.Name}}' | sed 's/\///')
     if docker inspect "$container_id" --format '{{ .State.Health.Status }}' > /dev/null 2>&1; then
-        log_succes "V-235827" "$container_name has health check"
+        log_success "V-235827" "$container_name has health check"
     else
         log_failure "V-235827" "$container_name is missing health check"
     fi
