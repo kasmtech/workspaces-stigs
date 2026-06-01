@@ -131,7 +131,7 @@ log_manual() {
 # Set cpu and memory limitations for service containers V-235807, V-235806
 if ! "${YQ_BIN}" -e '.services[].mem_limit' /opt/kasm/current/docker/docker-compose.yaml > /dev/null 2>&1; then
     for key in $("${YQ_BIN}" '.services | keys | .[]' /opt/kasm/current/docker/docker-compose.yaml); do
-       if [[ "${key}" =~ db ]]; then
+        if [[ "${key}" =~ db ]]; then
             "${YQ_BIN}" -i '.services."'"${key}"'".cpus = "'"${NUM_CPUS}"'"' /opt/kasm/current/docker/docker-compose.yaml
             "${YQ_BIN}" -i '.services."'"${key}"'".mem_limit = "'"${MEMORY}"'G"' /opt/kasm/current/docker/docker-compose.yaml
         else
@@ -471,9 +471,9 @@ fi
 CONTAINERS_TO_CHANGE=('proxy' 'kasm_agent' 'db')
 # kasm_api, kasm_guac, kasm_manager, kasm_rdp_gateway, kasm_rdp_https_gateway all pass this check without any modifcation.
 for container in "${CONTAINERS_TO_CHANGE[@]}"; do
-    if [[ ${container} == 'proxy' ]] && ! "${YQ_BIN}" -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null && [[ $(kernel_version_greater_than_or_equal "4" "11") -eq 0 ]] && [[ $("${YQ_BIN}" '.services.proxy.ports.[] | ( . == "443:443")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
+    if [[ ${container} == 'proxy' ]] && "${YQ_BIN}" -e '.services.proxy' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null && [[ $(kernel_version_greater_than_or_equal "4" "11") -eq 0 ]] && [[ $("${YQ_BIN}" '.services.proxy.ports.[] | ( . == "443:443")' /opt/kasm/current/docker/docker-compose.yaml) == 'true' ]]; then
         log_failure "V-235830" "Proxy container cannot be set to run as kasm user ${KASM_UID}. Please update the OS kernel or change the port Kasm proxy listens on"
-    elif [[ ${container} == 'db' ]] && ! "${YQ_BIN}" -e '.services.'"${container}"'' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
+    elif [[ ${container} == 'db' ]] && "${YQ_BIN}" -e '.services.'"${container}"'' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
         if ! "${YQ_BIN}" -e '.services.'"${container}"'.user | (. == "70:70")' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
             "${YQ_BIN}" -i '.services.'"${container}"'.user = "70:70"' /opt/kasm/current/docker/docker-compose.yaml
         fi
@@ -499,7 +499,7 @@ for container in "${CONTAINERS_TO_CHANGE[@]}"; do
         fi
         log_success "V-235830" "Container db set to run as postgresql user 70"
     else
-        if ! "${YQ_BIN}" -e '.services.'"${container}"'' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
+        if "${YQ_BIN}" -e '.services.'"${container}"'' /opt/kasm/current/docker/docker-compose.yaml &>/dev/null; then
             USEROUT=$("${YQ_BIN}" '.services.'"${container}"'.user' /opt/kasm/current/docker/docker-compose.yaml)
             # shellcheck disable=SC2016
             if [[ ! "${USEROUT}" == *'${KASM_UID?}:${KASM_GID?}'* ]]; then
