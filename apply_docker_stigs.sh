@@ -47,9 +47,9 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-command -v jq >/dev/null 2>&1 || { echo >&2 "The jq package is required, please install and restart the script. Aborting."; exit 1; }
-command -v auditctl >/dev/null 2>&1 || { echo >&2 "The audit package is required, please install and restart the script. Aborting."; exit 1; }
-command -v ausearch >/dev/null 2>&1 || { echo >&2 "The audit package is required, please install and restart the script. Aborting."; exit 1; }
+command -v jq &>/dev/null || { echo >&2 "The jq package is required, please install and restart the script. Aborting."; exit 1; }
+command -v auditctl &>/dev/null || { echo >&2 "The audit package is required, please install and restart the script. Aborting."; exit 1; }
+command -v ausearch &>/dev/null || { echo >&2 "The audit package is required, please install and restart the script. Aborting."; exit 1; }
 
 # Pretty logging
 log_success() {
@@ -61,7 +61,7 @@ log_failure() {
 }
 
 log_na() {
-    printf %b "$1, ${WRN}N/A${NC}, $2\n"
+    printf %b "$1, ${CMD}N/A${NC}, $2\n"
 }
 
 log_manual() {
@@ -79,7 +79,7 @@ PRI_INTERFACE=$(ip route | grep -m 1 'default via' | grep -Po '(?<=dev )\S+')
 PRI_IP=$(ip -f inet addr show "${PRI_INTERFACE}" | grep -Po '(?<=inet )(\d{1,3}\.)+\d{1,3}')
 
 read -rp "Please verify that ${PRI_IP} is the IP address that docker should bind to (y/n)? " choice
-    case "$choice" in
+    case "${choice}" in
         y|Y )
             ;;
         n|N )
@@ -336,13 +336,13 @@ else
     docker ps --quiet | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: Ports={{ .NetworkSettings.Ports }}' | grep -i host | cat
 fi
 
-if ausearch -k docker | grep exec | grep --quiet privileged; then
+if ausearch -k docker 2>/dev/null | grep exec | grep --quiet privileged; then
     log_failure 'V-235813' 'there is an exec session running with privileged flag'
 else
-    log_success 'V-235813' 'no exec sessions with privilged flag found'
+    log_success 'V-235813' 'no exec sessions with privileged flag found'
     if [[ -n "${SHOW_ARTIFACT}" ]]; then
-        echo "Command: ausearch -k docker | grep exec | grep privileged "
-        echo "Output: $(ausearch -k docker | grep exec | grep privileged)"
+        echo "Command: ausearch -k docker 2>/dev/null | grep exec | grep privileged "
+        echo "Output: $(ausearch -k docker 2>/dev/null | grep exec | grep privileged)"
     fi
 fi
 
@@ -372,7 +372,7 @@ fi
 if docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | tail -n +2 | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}' | grep --quiet -i "NetworkMode=host"; then
     log_failure 'V-235805' 'containers present sharing hosts network namespace'
 else
-    log_success 'V-235805' 'no containers running sharing hosts netork namespace'
+    log_success 'V-235805' 'no containers running sharing hosts network namespace'
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: docker ps --all | grep -iv \"ucp\|kube\|dtr\" | awk '{print $1}' | tail -n +2 | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}'"
@@ -392,7 +392,7 @@ fi
 if docker ps --quiet --all | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: Volumes={{ .Mounts }}' | grep -iv "ucp\|kubelet\|dtr" | grep -Po 'Source:\S+' | grep -P '\:(/|/boot|/dev|/etc|/lib|/proc|/sys|/usr)$'; then
     log_failure 'V-235783' 'sensitive directories mapped into containers detected.'
 else
-    log_success 'V-235783' 'no sensitive directories found mappend into containers'
+    log_success 'V-235783' 'no sensitive directories found mapped into containers'
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: docker ps --quiet --all | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: Volumes={{ .Mounts }}' | grep -iv 'ucp\|kubelet\|dtr'"
@@ -411,9 +411,9 @@ fi
 
 # shellcheck disable=SC2016
 if docker ps --all | grep -iv "ucp\|kube\|dtr" | awk '{print $1}' | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: Propagation={{range $mnt := .Mounts}} {{json $mnt.Propagation}} {{end}}' 2>/dev/null | grep --quiet 'shared'; then
-    log_failure 'V-235810' 'mount progagation mode set to shared.'
+    log_failure 'V-235810' 'mount propagation mode set to shared.'
 else
-    log_success 'V-235810' 'no mounts set to shared propogation mode found'
+    log_success 'V-235810' 'no mounts set to shared propagation mode found'
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: docker ps --all | grep -iv 'ucp\|kube\|dtr' | awk '{print $1}' | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: Propagation={{range \$mnt := .Mounts}} {{json \$mnt.Propagation}} {{end}}'"
@@ -437,8 +437,8 @@ else
     log_success 'V-235814' 'no exec sessions with user flag found'
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
-    echo "Command: ausearch -k docker | grep exec | grep user"
-    echo "Output: $(ausearch -k docker | grep exec | grep user)"
+    echo "Command: ausearch -k docker 2>/dev/null | grep exec | grep user"
+    echo "Output: $(ausearch -k docker 2>/dev/null | grep exec | grep user)"
 fi
 
 if docker ps --quiet --all | xargs --no-run-if-empty docker inspect --format '{{ .Id }}: CgroupParent={{ .HostConfig.CgroupParent }}' | grep -P '=\w+'; then
@@ -486,7 +486,7 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
 fi
 
 PASS=1
-for i in $(docker ps -qa); do
+for i in $(docker ps -q); do
     if docker exec "${i}" ps -el | grep -i sshd; then
         log_failure 'V-235803' 'containers running sshd found.'
         if [[ -n "${SHOW_ARTIFACT}" ]]; then
