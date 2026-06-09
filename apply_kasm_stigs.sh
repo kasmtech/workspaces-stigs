@@ -333,12 +333,12 @@ fi
 # Proxy changes
 if "${YQ_BIN}" -e '.services.proxy' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
     if "${YQ_BIN}" -e '.services.proxy.read_only' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
-        log_success "V-235808" "proxy is read only"
+        log_success "V-235808" "proxy is already read only"
     else
         mkdir -p /opt/kasm/current/cache/nginx
         chown -R kasm:kasm /opt/kasm/current/cache
         "${YQ_BIN}" -i '.services.proxy.volumes |= (. + "/opt/kasm/current/cache/nginx:/var/cache/nginx" | unique) | .services.proxy += {"read_only": true} | .services.proxy += {"tmpfs": ["/var/run:uid='"${KASM_UID}"',gid='"${KASM_GID}"'"]}' ${KASM_COMPOSE_PROJECT}
-        log_success "V-235808" "proxy is read only"
+        log_success "V-235808" "proxy is now read only"
     fi
     if [[ -n "${SHOW_ARTIFACT}" ]]; then
         echo "Command: ${YQ_BIN} -e '.services.proxy.read_only' ${KASM_COMPOSE_PROJECT}"
@@ -380,12 +380,12 @@ fi
 
 # Database changes
 if "${YQ_BIN}" -e '.services.db' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
-    if "${YQ_BIN}" -e '.services.db.read_only' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
-        log_success "V-235808" "kasm_db is read only"
+    if "${YQ_BIN}" -e '.services.db.tmpfs[] | select(. == "/var/run:uid='${POSTGRES_UID}',gid='${POSTGRES_GID}'")' ${KASM_COMPOSE_PROJECT} &>/dev/null && "${YQ_BIN}" -e '.services.db.read_only' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
+        log_success "V-235808" "kasm_db is already read only"
     else
         mkdir -p /opt/kasm/current/tmp/kasm_db/
-        "${YQ_BIN}" -i '.services.db += {"tmpfs": ["/var/run:uid='${POSTGRES_UID}',gid='${POSTGRES_GID}'"]} | .services.db += {"read_only": true}' ${KASM_COMPOSE_PROJECT}
-        log_success "V-235808" "kasm_db is read only"
+        "${YQ_BIN}" -i '.services.db |= (. + {"tmpfs": ["/var/run:uid='${POSTGRES_UID}',gid='${POSTGRES_GID}'"] | unique}) | .services.db += {"read_only": true}' ${KASM_COMPOSE_PROJECT}
+        log_success "V-235808" "kasm_db is now read only"
     fi
     if [[ -n "${SHOW_ARTIFACT}" ]]; then
         echo "Command: ${YQ_BIN} -e '.services.db.read_only' ${KASM_COMPOSE_PROJECT}"
