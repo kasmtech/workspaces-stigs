@@ -448,7 +448,7 @@ fi
 
 # proxy health check
 if "${YQ_BIN}" -e '.services.proxy' "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
-    if ! "${YQ_BIN}" -e '.services.proxy' "${KASM_COMPOSE_PROJECT}" | grep --quiet healthcheck; then
+    if ! "${YQ_BIN}" -e '.services.proxy.healthcheck' "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
         "${YQ_BIN}" -i '.services.proxy += {"healthcheck": { "test": "nginx -t", "timeout": "2s", "retries": 5 }}' "${KASM_COMPOSE_PROJECT}"
         echo "${OK}Configured healthcheck for proxy container${NC}"
     fi
