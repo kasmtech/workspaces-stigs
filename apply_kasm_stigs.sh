@@ -446,6 +446,14 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $("${YQ_BIN}" '.services.[] | "\(.container_name) - read_only: \(.read_only)"' ${KASM_COMPOSE_PROJECT})"
 fi
 
+# proxy health check
+if "${YQ_BIN}" -e '.services.proxy' "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
+    if ! "${YQ_BIN}" -e '.services.proxy.healthcheck' "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
+        "${YQ_BIN}" -i '.services.proxy += {"healthcheck": { "test": "nginx -t", "timeout": "2s", "retries": 5 }}' "${KASM_COMPOSE_PROJECT}"
+        echo "${OK}Configured healthcheck for proxy container${NC}"
+    fi
+fi
+
 # Force user mode on all containers V-235830
 # All supported kernels now allow this change
 # (making the assumption no other port under 1024 is likely to be mapped)
