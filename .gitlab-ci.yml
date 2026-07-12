@@ -41,10 +41,9 @@ upload-mr:
     entrypoint: [""]
   script:
     - export BASE_DIR="$(readlink -f .)"
-    - export S3_BUILD_DIRECTORY="engineering/docker-stigs/${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_}/1.17.0"
+    - export S3_BUILD_DIRECTORY="engineering/docker-stigs/${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_}"
     - export S3_BUCKET="kasm-static-content"
     - if [[ -z ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_} ]]; then exit 1; fi
     - aws --version
     - aws s3 cp ${BASE_DIR}/apply_docker_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/ --acl public-read
     - aws s3 cp ${BASE_DIR}/apply_kasm_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/ --acl public-read
-
