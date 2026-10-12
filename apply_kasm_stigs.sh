@@ -502,7 +502,7 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
 fi
 
 echo "Recreating containers with new compose changes"
-/opt/kasm/bin/stop
+/opt/kasm/bin/stop || :
 /opt/kasm/bin/start
 
 #### Make sure containers are running with a health check
