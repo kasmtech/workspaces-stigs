@@ -501,7 +501,8 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $("${YQ_BIN}" '.services.[] | "\(.container_name) - user: \(.user)"' ${KASM_COMPOSE_PROJECT})"
 fi
 
-echo "Restarting containers where needed with new compose changes"
+echo "Recreating containers with new compose changes"
+/opt/kasm/bin/stop || :
 /opt/kasm/bin/start
 
 #### Make sure containers are running with a health check
