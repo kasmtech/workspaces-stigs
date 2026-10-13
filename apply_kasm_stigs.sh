@@ -17,7 +17,10 @@ KASM_UID=$(id kasm -u)
 KASM_GID=$(id kasm -g)
 POSTGRES_UID=70
 POSTGRES_GID=70
+CLICKHOUSE_UID=101
+CLICKHOUSE_GID=101
 KASM_PID_LIMIT=1000
+KASM_PID_LIMIT_CLICKHOUSE=4096 # clickhouse idles at ~700 threads
 
 # Colours
 CMD='\e[0;34m'
@@ -128,31 +131,65 @@ log_manual() {
     printf %b "$1, ${WRN}MANUAL${NC}, $2\n"
 }
 
-# Set cpu and memory limitations for service containers V-235807, V-235806
-if ! "${YQ_BIN}" -e '.services[].mem_limit' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
-    for service in $("${YQ_BIN}" '.services | keys | .[]' ${KASM_COMPOSE_PROJECT}); do
-        if [[ "${service}" =~ db ]]; then
-            "${YQ_BIN}" -i ".services.${service}.cpus = ${NUM_CPUS}" ${KASM_COMPOSE_PROJECT}
-            "${YQ_BIN}" -i ".services.${service}.mem_limit = \"${MEMORY}G\"" ${KASM_COMPOSE_PROJECT}
-        else
-            if [[ "${CPU_LIMIT}" -gt "${NUM_CPUS}" ]]; then
-                "${YQ_BIN}" -i ".services.${service}.cpus = ${NUM_CPUS}" ${KASM_COMPOSE_PROJECT}
-                "${YQ_BIN}" -i ".services.${service}.mem_limit = \"2G\"" ${KASM_COMPOSE_PROJECT}
-            else
-                "${YQ_BIN}" -i ".services.${service}.cpus = ${CPU_LIMIT}" ${KASM_COMPOSE_PROJECT}
-                "${YQ_BIN}" -i ".services.${service}.mem_limit = \"2G\"" ${KASM_COMPOSE_PROJECT}
-            fi
+# Set memory limitations for service containers V-235806
+MEM_LIMIT_SET=0
+for service in $("${YQ_BIN}" '.services | keys | .[]' "${KASM_COMPOSE_PROJECT}"); do
+    if [[ "${service}" =~ db|clickhouse ]]; then
+        if ! "${YQ_BIN}" -e ".services.${service}.mem_limit == \"${MEMORY}G\"" "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
+            "${YQ_BIN}" -i ".services.${service}.mem_limit = \"${MEMORY}G\"" "${KASM_COMPOSE_PROJECT}"
+            ((++MEM_LIMIT_SET))
         fi
-    done
-    log_success "V-235806" "Memory limits have been set"
-    log_success "V-235807" "CPU limits have been set"
+    else
+        if ! "${YQ_BIN}" -e ".services.${service}.mem_limit == \"2G\"" "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
+            "${YQ_BIN}" -i ".services.${service}.mem_limit = \"2G\"" "${KASM_COMPOSE_PROJECT}"
+            ((++MEM_LIMIT_SET))
+        fi
+    fi
+done
+
+if [[ ${MEM_LIMIT_SET} -gt 0 ]]; then
+    log_success "V-235806" "Memory limits have been set on ${MEM_LIMIT_SET} containers"
 else
     log_success "V-235806" "Using existing Memory limits"
+fi
+
+if [[ -n "${SHOW_ARTIFACT}" ]]; then
+    echo "Command: ${YQ_BIN} -e '.services.[] | \"\(.container_name) - mem_limit: \(.mem_limit)\"' ${KASM_COMPOSE_PROJECT}"
+    echo "Output: $("${YQ_BIN}" -e '.services.[] | "\(.container_name) - mem_limit: \(.mem_limit)"' ${KASM_COMPOSE_PROJECT})"
+fi
+
+# Set cpu limitations for service containers V-235807
+CPU_LIMIT_SET=0
+for service in $("${YQ_BIN}" '.services | keys | .[]' "${KASM_COMPOSE_PROJECT}"); do
+    if [[ "${service}" =~ db|clickhouse ]]; then
+        if ! "${YQ_BIN}" -e ".services.${service}.cpus == ${NUM_CPUS}" "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
+            "${YQ_BIN}" -i ".services.${service}.cpus = ${NUM_CPUS}" "${KASM_COMPOSE_PROJECT}"
+            ((++CPU_LIMIT_SET))
+        fi
+    else
+        if [[ "${CPU_LIMIT}" -gt "${NUM_CPUS}" ]]; then
+            if ! "${YQ_BIN}" -e ".services.${service}.cpus == ${NUM_CPUS}" "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
+                "${YQ_BIN}" -i ".services.${service}.cpus = ${NUM_CPUS}" "${KASM_COMPOSE_PROJECT}"
+                ((++CPU_LIMIT_SET))
+            fi
+        else
+            if ! "${YQ_BIN}" -e ".services.${service}.cpus == ${CPU_LIMIT}" "${KASM_COMPOSE_PROJECT}" &>/dev/null; then
+                "${YQ_BIN}" -i ".services.${service}.cpus = ${CPU_LIMIT}" "${KASM_COMPOSE_PROJECT}"
+                ((++CPU_LIMIT_SET))
+            fi
+        fi
+    fi
+done
+
+if [[ ${CPU_LIMIT_SET} -gt 0 ]]; then
+    log_success "V-235807" "CPU limits have been set on ${CPU_LIMIT_SET} containers"
+else
     log_success "V-235807" "Using existing CPU limits"
 fi
+
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
-    echo "Command: ${YQ_BIN} -e '.services.[] | \"\(.container_name) - mem_limit: \(.mem_limit) - cpus: \(.cpus)\"' ${KASM_COMPOSE_PROJECT}"
-    echo "Output: $("${YQ_BIN}" -e '.services.[] | "\(.container_name) - mem_limit: \(.mem_limit) - cpus: \(.cpus)"' ${KASM_COMPOSE_PROJECT} )"
+    echo "Command: ${YQ_BIN} -e '.services.[] | \"\(.container_name) - cpus: \(.cpus)\"' ${KASM_COMPOSE_PROJECT}"
+    echo "Output: $("${YQ_BIN}" -e '.services.[] | "\(.container_name) - cpus: \(.cpus)"' ${KASM_COMPOSE_PROJECT})"
 fi
 
 # Set restart policy for service containers V-235843
@@ -160,15 +197,16 @@ if "${YQ_BIN}" -e '.services.[].restart' ${KASM_COMPOSE_PROJECT} &>/dev/null && 
     log_success "V-235843" "Restart limits are set on all containers"
 else
     "${YQ_BIN}" -i '.services[].restart = "on-failure:5"' ${KASM_COMPOSE_PROJECT}
-    # adding a manual delay of 60 sec on rdpgw https for single-server deploys, since it requires healthy manager
-    if "${YQ_BIN}" -e '.services.kasm_rdp_https_gateway' ${KASM_COMPOSE_PROJECT} &>/dev/null && "${YQ_BIN}" -e '.services.kasm_manager' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
-        "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.entrypoint = ["/bin/sh","-c","sleep 60 && exec /opt/rdpgw/rdpgw"]' ${KASM_COMPOSE_PROJECT}
-    fi
     log_success "V-235843" "Using existing Restart limits"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Command: ${YQ_BIN} -e '.services.[] | \"\(.container_name) - restart: \(.restart)\"' ${KASM_COMPOSE_PROJECT}"
     echo "Output: $( "${YQ_BIN}" -e '.services.[] | "\(.container_name) - restart: \(.restart)"' ${KASM_COMPOSE_PROJECT})"
+fi
+
+# adding a manual startup delay of 60 sec on rdpgw https for single-server deploys, since it requires healthy api
+if "${YQ_BIN}" -e '.services.kasm_rdp_https_gateway' ${KASM_COMPOSE_PROJECT} &>/dev/null && "${YQ_BIN}" -e '.services.kasm_api' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
+    "${YQ_BIN}" -i '.services.kasm_rdp_https_gateway.entrypoint = ["/bin/sh","-c","sleep 60 && exec /opt/rdpgw/rdpgw"]' ${KASM_COMPOSE_PROJECT}
 fi
 
 # Set no new privileges for all containers V-235816
@@ -199,10 +237,11 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
 fi
 
 # Set pid limits for all containers V-235828
-if "${YQ_BIN}" -e '.services.[].pids_limit' ${KASM_COMPOSE_PROJECT} &>/dev/null && [[ $("${YQ_BIN}" '[.services.[].pids_limit == "'${KASM_PID_LIMIT}'"] | select(. == true) | length' ${KASM_COMPOSE_PROJECT}) -eq $("${YQ_BIN}" -e '.services | length' ${KASM_COMPOSE_PROJECT}) ]]; then
-    log_success "V-235828" "Using existing pid limit"
+# every service must already carry its expected limit (clickhouse has its own), otherwise all are (re)set
+if ! (export KASM_PID_LIMIT_CLICKHOUSE KASM_PID_LIMIT;"${YQ_BIN}" -e '.services | to_entries[] | select((.key != "kasm_clickhouse" and .value.pids_limit != env(KASM_PID_LIMIT)) or (.key == "kasm_clickhouse" and .value.pids_limit != env(KASM_PID_LIMIT_CLICKHOUSE)))' "${KASM_COMPOSE_PROJECT}" &>/dev/null); then
+    log_success "V-235828" "Using existing pid limits"
 else
-    "${YQ_BIN}" -i '.services.[] += {"pids_limit": '${KASM_PID_LIMIT}'}' ${KASM_COMPOSE_PROJECT}
+    "${YQ_BIN}" -i '(.services[] | select(key != "kasm_clickhouse")).pids_limit = '${KASM_PID_LIMIT}' | (.services[] | select(key == "kasm_clickhouse")).pids_limit = '${KASM_PID_LIMIT_CLICKHOUSE} ${KASM_COMPOSE_PROJECT}
     log_success "V-235828" "pid limit has been set for all containers"
 fi
 if [[ -n "${SHOW_ARTIFACT}" ]]; then
@@ -363,21 +402,6 @@ else
     log_na "V-235808" "This host does not have the api service"
 fi
 
-# Manager Changes
-if "${YQ_BIN}" -e '.services.kasm_manager' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
-    if "${YQ_BIN}" -e '.services.kasm_manager.read_only' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
-        log_success "V-235808" "kasm_manager is read only"
-        if [[ -n "${SHOW_ARTIFACT}" ]]; then
-            echo "Command: ${YQ_BIN} -e '.services.kasm_manager.read_only' ${KASM_COMPOSE_PROJECT}"
-            echo "Output: $("${YQ_BIN}" -e '.services.kasm_manager.read_only' ${KASM_COMPOSE_PROJECT})"
-        fi
-    else
-        log_failure "V-235808" "kasm_manager is not read only"
-    fi
-else
-    log_na "V-235808" "This host does not have the manager service"
-fi
-
 # Database changes
 if "${YQ_BIN}" -e '.services.db' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
     if "${YQ_BIN}" -e '.services.db.tmpfs[] | select(. == "/var/run:uid='${POSTGRES_UID}',gid='${POSTGRES_GID}'")' ${KASM_COMPOSE_PROJECT} &>/dev/null && "${YQ_BIN}" -e '.services.db.read_only' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
@@ -393,6 +417,41 @@ if "${YQ_BIN}" -e '.services.db' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
     fi
 else
     log_na "V-235808" "This host does not have the database service"
+fi
+
+# ClickHouse changes
+# users.d is tmpfs so the entrypoint can still write default-user.xml (restricts the built-in 'default' user to localhost) on a read-only filesystem
+if "${YQ_BIN}" -e '.services.kasm_clickhouse' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
+    CLICKHOUSE_TMPFS='["/tmp:uid='${CLICKHOUSE_UID}',gid='${CLICKHOUSE_GID}'", "/var/log/clickhouse-server:uid='${CLICKHOUSE_UID}',gid='${CLICKHOUSE_GID}'", "/etc/clickhouse-server/users.d:uid='${CLICKHOUSE_UID}',gid='${CLICKHOUSE_GID}'"]'
+    CLICKHOUSE_HARDENED_FILTER='.services.kasm_clickhouse | select(.read_only == true and ((.tmpfs // []) | contains('"${CLICKHOUSE_TMPFS}"')) and .environment.CLICKHOUSE_SKIP_USER_SETUP == null)'
+    if [[ -n "$("${YQ_BIN}" "${CLICKHOUSE_HARDENED_FILTER}" ${KASM_COMPOSE_PROJECT})" ]]; then
+        log_success "V-235808" "kasm_clickhouse is already read only"
+    else
+        "${YQ_BIN}" -i '.services.kasm_clickhouse.read_only = true | .services.kasm_clickhouse.tmpfs |= ((. // []) + '"${CLICKHOUSE_TMPFS}"' | unique) | del(.services.kasm_clickhouse.environment.CLICKHOUSE_SKIP_USER_SETUP) | del(.services.kasm_clickhouse.environment | select(length == 0))' ${KASM_COMPOSE_PROJECT}
+        log_success "V-235808" "kasm_clickhouse is now read only"
+    fi
+    if [[ -n "${SHOW_ARTIFACT}" ]]; then
+        echo "Command: ${YQ_BIN} -e '.services.kasm_clickhouse.read_only' ${KASM_COMPOSE_PROJECT}"
+        echo "Output: $("${YQ_BIN}" -e '.services.kasm_clickhouse.read_only' ${KASM_COMPOSE_PROJECT})"
+    fi
+else
+    log_na "V-235808" "This host does not have the clickhouse service"
+fi
+
+# OTel collector changes
+if "${YQ_BIN}" -e '.services.kasm_otel_collector' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
+    if "${YQ_BIN}" -e '.services.kasm_otel_collector.read_only' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
+        log_success "V-235808" "kasm_otel_collector is already read only"
+    else
+        "${YQ_BIN}" -i '.services.kasm_otel_collector += {"read_only": true}' ${KASM_COMPOSE_PROJECT}
+        log_success "V-235808" "kasm_otel_collector is now read only"
+    fi
+    if [[ -n "${SHOW_ARTIFACT}" ]]; then
+        echo "Command: ${YQ_BIN} -e '.services.kasm_otel_collector.read_only' ${KASM_COMPOSE_PROJECT}"
+        echo "Output: $("${YQ_BIN}" -e '.services.kasm_otel_collector.read_only' ${KASM_COMPOSE_PROJECT})"
+    fi
+else
+    log_na "V-235808" "This host does not have the otel collector service"
 fi
 
 # rdp_gateway changes
@@ -457,10 +516,15 @@ fi
 # Force user mode on all containers V-235830
 # All supported kernels now allow this change
 # (making the assumption no other port under 1024 is likely to be mapped)
-CONTAINERS_TO_CHANGE=('proxy' 'kasm_agent' 'db')
-# kasm_api, kasm_guac, kasm_manager, kasm_rdp_gateway, kasm_rdp_https_gateway all pass this check without any modification.
+CONTAINERS_TO_CHANGE=('proxy' 'kasm_agent' 'db' 'kasm_clickhouse')
+# kasm_api, kasm_guac, rdp_gateway, kasm_rdp_https_gateway, kasm_otel_collector all pass this check without any modification.
 for container in "${CONTAINERS_TO_CHANGE[@]}"; do
-    if [[ ${container} == 'db' ]] && "${YQ_BIN}" -e '.services.'"${container}"'' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
+    if [[ ${container} == 'kasm_clickhouse' ]] && "${YQ_BIN}" -e '.services.'"${container}"'' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
+        if ! "${YQ_BIN}" -e '.services.kasm_clickhouse.user | (. == "'${CLICKHOUSE_UID}:${CLICKHOUSE_GID}'")' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
+            "${YQ_BIN}" -i '.services.kasm_clickhouse.user = "'${CLICKHOUSE_UID}:${CLICKHOUSE_GID}'"' ${KASM_COMPOSE_PROJECT}
+        fi
+        log_success "V-235830" "kasm_clickhouse service set to run as clickhouse user ${CLICKHOUSE_UID}"
+    elif [[ ${container} == 'db' ]] && "${YQ_BIN}" -e '.services.'"${container}"'' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
         if ! "${YQ_BIN}" -e '.services.db.user | (. == "'${POSTGRES_UID}:${POSTGRES_GID}'")' ${KASM_COMPOSE_PROJECT} &>/dev/null; then
             "${YQ_BIN}" -i '.services.db.user = "'${POSTGRES_UID}:${POSTGRES_GID}'"' ${KASM_COMPOSE_PROJECT}
         fi
@@ -501,7 +565,8 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $("${YQ_BIN}" '.services.[] | "\(.container_name) - user: \(.user)"' ${KASM_COMPOSE_PROJECT})"
 fi
 
-echo "Restarting containers where needed with new compose changes"
+echo "Recreating containers with new compose changes"
+/opt/kasm/bin/stop || :
 /opt/kasm/bin/start
 
 #### Make sure containers are running with a health check
@@ -511,6 +576,9 @@ for container_id in $(docker compose --project-directory /opt/kasm/current/docke
     container_name=$(docker inspect "${container_id}" --format '{{.Name}}' | sed 's/\///')
     if docker inspect "${container_id}" --format '{{ .State.Health.Status }}' &>/dev/null; then
         log_success "V-235827" "${container_name} has health check"
+    elif [[ "${container_name}" == "kasm_otel_collector" ]]; then
+        # distroless image, no shell for a health check
+        log_na "V-235827" "${container_name} cannot run an in-container health check; probe TCP port 4317 from the host if required"
     else
         log_failure "V-235827" "${container_name} is missing health check"
     fi

@@ -62,7 +62,6 @@ Command: cat /etc/docker/daemon.json | grep -i log-driver
 Output:   "log-driver": "syslog",
 ```
 
-
 ## Reporting Issues
 
 To report any issues for this repository, please use our central issue tracker: **[Kasm Workspaces Issue Tracker](https://github.com/kasmtech/workspaces-issues/issues)**
