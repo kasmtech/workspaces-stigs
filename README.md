@@ -8,27 +8,27 @@
 
 Ensure that you switch to a branch that matches the version of Kasm Workspaces that you have installed. For example, if you are running Kasm Workspaces 1.18.1, ensure that you change to the release/1.18.1 branch before applying the script.
 
-The `develop` branch is kept broadly in sync with the current rolling developer preview of Kasm but we make no assurances with regard to compatibilty at any given point, and do not recommend running the developer preview in environments where STIG compliance is required.
+The `develop` branch is kept broadly in sync with the current rolling developer preview of Kasm but we make no assurances with regard to compatibility at any given point, and do not recommend running the developer preview in environments where STIG compliance is required.
 
 ## Supported Architectures
 
-These hardening scripts will only work on x86_64/AMD64 based architectures.
+These hardening scripts will only work on x86_64/aarch64 based architectures.
 
 ## Supported Operating Systems
 
 These hardening scripts have been tested by Kasm Technologies on the following operating systems. It should be noted that we started with a base OS install and then installed Kasm Workspaces. These systems were not pre-configured in any way nor did they already have docker installed. These hardening scripts may not work on the following operating systems if they have unique non-default configurations. A supported Linux kernel version is required.
 
+* Ubuntu 26.04 LTS
 * Ubuntu 24.04 LTS
 * Ubuntu 22.04 LTS
-* Ubuntu 20.04 LTS
 
-Please open an issue on the project's issue tracker to report your experience with other operating systems. The scripts have been written such that they should work on any Linux distro with the prerquisites cited.
+Please open an issue on the project's issue tracker to report your experience with other operating systems. The scripts have been written such that they should work on any Linux distro with the prerequisites cited.
 
 ## Prerequisites
 
 `auditd` must be installed on the operating system. Auditd is required to meet base operating system STIG requirements and should therefore already be installed. The package `jq` is also required and should be available in the operating systems package repository for most operating systems.
 
-The `apply_kasm_stigs.sh` will attempt to use the `yq` utility that is bundled with a Kasm install, or alternatively download it on an internet connected host. If you are on an air gapped network, please pull down the latest `yq` from here: [https://github.com/mikefarah/yq/releases](https://github.com/mikefarah/yq/releases) and put the binary here: /opt/kasm/bin/utilities/yq_x86_64
+The `apply_kasm_stigs.sh` will attempt to use the `yq` utility that is bundled with a Kasm install, or alternatively download it on an internet connected host. If you are on an air gapped network, please pull down the latest `yq` from here: [https://github.com/mikefarah/yq/releases](https://github.com/mikefarah/yq/releases) and put the binary at /opt/kasm/bin/utilities/yq_x86_64, or /opt/kasm/bin/utilities/yq_yq_aarch64, depending on architecture.
 
 ## Applying the Scripts
 
@@ -50,7 +50,7 @@ In a hardened environment, it is assumed that Kasm will be proxied behind a secu
 
 ## Considerations when executing a database backup
 
-Because the database is running as uid:gid 70:70, when you execute the /opt/kasm/bin/utils/db_backup script ensure that the directory passed for the backup file is writable by 70:70 or the backup will fail.
+Because the database is running as uid:gid 70:70, when you execute the /opt/kasm/bin/utils/db_backup script ensure that the directory passed for the backup file is writeable by 70:70 or the backup will fail.
 
 ## Verbose output for Checklist Artifacts
 
