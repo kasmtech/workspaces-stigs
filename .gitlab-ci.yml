@@ -1,6 +1,4 @@
 image: docker
-services:
-  - docker:dind
 
 workflow:
   rules:
@@ -10,7 +8,7 @@ workflow:
       when: always
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       when: always
-    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_REF_PROTECTED == "true"
       when: always
 
 stages:
@@ -25,13 +23,14 @@ clean:
   image:
     name: amazon/aws-cli
     entrypoint: [""]
-  script:
-    - BRANCH_NAME=$(grep -Po "Merge branch '\K(\S*)(?=')" <<< ${CI_COMMIT_MESSAGE})
-    - export S3_BUILD_DIRECTORY="engineering/stigs/${BRANCH_NAME/\//_}"
-    - export S3_BUCKET="kasm-static-content"
-    - if [[ -z ${BRANCH_NAME/\//_} ]] || [[ "${BRANCH_NAME}" = $CI_DEFAULT_BRANCH  ]]; then exit 0; fi
-    - aws --version
-    - aws s3 rm s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY} --recursive
+  script: |
+    set -euo pipefail
+    BRANCH_NAME=$(grep -Po "Merge branch '\K(\S*)(?=')" <<< ${CI_COMMIT_MESSAGE})
+    export S3_BUILD_DIRECTORY="engineering/stigs/${BRANCH_NAME/\//_}"
+    export S3_BUCKET="kasm-static-content"
+    if [[ -z ${BRANCH_NAME/\//_} ]] || [[ "${BRANCH_NAME}" = $CI_DEFAULT_BRANCH  ]]; then exit 0; fi
+    aws --version
+    aws s3 rm "s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}" --recursive
 
 upload-mr:
   rules:
@@ -40,28 +39,41 @@ upload-mr:
   image:
     name: amazon/aws-cli
     entrypoint: [""]
-  script:
-    - export BASE_DIR="$(readlink -f .)"
-    - export S3_BUILD_DIRECTORY="engineering/stigs/${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_}"
-    - export S3_BUCKET="kasm-static-content"
-    - if [[ -z ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_} ]]; then exit 1; fi
-    - aws --version
-    - aws s3 cp ${BASE_DIR}/apply_docker_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/ --acl public-read
-    - aws s3 cp ${BASE_DIR}/apply_kasm_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/ --acl public-read
+  script: |
+    set -euo pipefail
+    export BASE_DIR="$(readlink -f .)"
+    export S3_BUILD_DIRECTORY="engineering/stigs/${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_}"
+    export S3_BUCKET="kasm-static-content"
+    if [[ -z ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/\//_} ]]; then exit 1; fi
+    aws --version
+    aws s3 cp "${BASE_DIR}/apply_docker_stigs.sh" "s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/" --acl public-read
+    aws s3 cp "${BASE_DIR}/apply_kasm_stigs.sh" "s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/" --acl public-read
 
 upload:
   rules:
-    - if: $CI_PIPELINE_SOURCE != 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: never
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_BRANCH
   stage: upload
   image:
     name: docker.io/amazon/aws-cli
     entrypoint: [""]
-  script:
-    - export BASE_DIR="$(readlink -f .)"
-    - export S3_BUILD_DIRECTORY="engineering/stigs"
-    - export S3_BUCKET="kasm-static-content"
-    - clean_branch=${CI_COMMIT_BRANCH//\//_}
-    - if [[ -z ${clean_branch} ]]; then exit 1; fi
-    - aws --version
-    - aws s3 cp ${BASE_DIR}/apply_docker_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/${clean_branch}/ --acl public-read
-    - aws s3 cp ${BASE_DIR}/apply_kasm_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/${clean_branch}/ --acl public-read
+  resource_group: upload-stigs
+  script: |
+    set -euo pipefail
+    export BASE_DIR="$(readlink -f .)"
+    export S3_BUILD_DIRECTORY="engineering/stigs"
+    export S3_BUCKET="kasm-static-content"
+    clean_branch=${CI_COMMIT_BRANCH//\//_}
+    branch_version="${CI_COMMIT_BRANCH#release/}"
+    if [[ -z ${clean_branch} ]]; then exit 1; fi
+    aws --version
+    aws s3 cp "${BASE_DIR}/apply_docker_stigs.sh" "s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/${clean_branch}/" --acl public-read
+    aws s3 cp "${BASE_DIR}/apply_kasm_stigs.sh" "s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/${clean_branch}/" --acl public-read
+    if [[ ${CI_COMMIT_BRANCH} == release/* ]]; then
+      aws s3 cp "s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/supported_versions.json" "${BASE_DIR}/supported_versions.json"
+      SUPPORTED_VERSIONS=$(cat "${BASE_DIR}/supported_versions.json")
+      jq --arg version "${branch_version}" '.versions |= (.+ [$version] | unique)' <<< "${SUPPORTED_VERSIONS}" > "${BASE_DIR}/supported_versions.json"
+      jq -e '.' < "${BASE_DIR}/supported_versions.json"
+      aws s3 cp "${BASE_DIR}/supported_versions.json" "s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/supported_versions.json" --acl public-read
+    fi
