@@ -61,7 +61,7 @@ upload:
     - export S3_BUILD_DIRECTORY="engineering/stigs"
     - export S3_BUCKET="kasm-static-content"
     - clean_branch=${CI_COMMIT_BRANCH//\//_}
-    - if [[ -z ${clean_branch } ]]; then exit 1; fi
+    - if [[ -z ${clean_branch} ]]; then exit 1; fi
     - aws --version
     - aws s3 cp ${BASE_DIR}/apply_docker_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/${clean_branch}/ --acl public-read
     - aws s3 cp ${BASE_DIR}/apply_kasm_stigs.sh s3://${S3_BUCKET}/${S3_BUILD_DIRECTORY}/${clean_branch}/ --acl public-read
