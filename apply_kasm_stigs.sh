@@ -485,7 +485,8 @@ for container in "${CONTAINERS_TO_CHANGE[@]}"; do
                     chown -R kasm:kasm /opt/kasm/current/log/nginx
                     chown -R kasm:kasm /opt/kasm/current/certs/kasm_nginx*
                 elif [[ ${container} == 'kasm_agent' ]]; then
-                    chown -R kasm:kasm /opt/kasm/current/log
+                    chown kasm:kasm /opt/kasm/current/log
+                    chown -R kasm:kasm /opt/kasm/current/log/agent*
                     chown -R kasm:kasm /opt/kasm/current/file_mappings*
                     chown -R kasm:kasm /opt/kasm/current/conf/app
                 fi
