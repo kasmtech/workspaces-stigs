@@ -553,6 +553,7 @@ for container in "${CONTAINERS_TO_CHANGE[@]}"; do
                     chown -R kasm:kasm /opt/kasm/current/log/agent*
                     chown -R kasm:kasm /opt/kasm/current/file_mappings*
                     chown -R kasm:kasm /opt/kasm/current/conf/app
+                    chown kasm:kasm /var/lib/kasm-sidecar/policies
                 fi
                 log_success "V-235830" "${container} service has been set to run as kasm user ${KASM_UID}"
             else
