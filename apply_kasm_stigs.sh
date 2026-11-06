@@ -90,8 +90,8 @@ fi
 # Check for yq
 if [[ ! -f "${YQ_BIN}" ]]; then
     # Check for existing yq installs in PATH
-    if which yq; then
-        YQ_BIN=$(which yq)
+    if command -v yq &>/dev/null && [[ $($(command -v yq) --version) =~ mikefarah ]]; then
+        YQ_BIN=$(command -v yq)
         echo -e "Using host-provided yq binary from ${YQ_BIN} - $(${YQ_BIN} --version)\nIf you experience issues please ensure it is up to date"
     else
         if [[ $(uname -m) == "x86_64" ]]; then
@@ -249,24 +249,36 @@ if [[ -n "${SHOW_ARTIFACT}" ]]; then
     echo "Output: $("${YQ_BIN}" -e '.services.[] | "\(.container_name) - pids_limit: \(.pids_limit)"' ${KASM_COMPOSE_PROJECT})"
 fi
 
-# Setup docker daemon to use TCP and modify agent V-235818
-if "${YQ_BIN}" -e '.services.kasm_agent' ${KASM_COMPOSE_PROJECT} &>/dev/null && ! "${YQ_BIN}" -e '.services.kasm_agent.environment.DOCKER_HOST == "tcp://'"${PRI_IP}"':2375"' ${KASM_COMPOSE_PROJECT} &> /dev/null; then
+# Setup docker daemon to use TCP and modify agent V-235818. If TLS is already configured check the CA cert for VERIFY_X509_STRICT compliance and reissue if not met.
+if "${YQ_BIN}" -e '.services.kasm_agent' ${KASM_COMPOSE_PROJECT} &>/dev/null && (! "${YQ_BIN}" -e '.services.kasm_agent.environment.DOCKER_HOST == "tcp://'"${PRI_IP}"':2375"' ${KASM_COMPOSE_PROJECT} &> /dev/null || ! openssl verify -x509_strict -CAfile /etc/docker/certs/ca.pem '/etc/docker/certs/server-cert.pem'); then
     # Cert management
     CERT_TMPDIR=$(mktemp -d)
     cd "${CERT_TMPDIR}"
     SUBJECT="/C=US/ST=VA/L=City/O=Kasm/OU=Kasm Server/CN=$(hostname)"
     openssl genrsa -out ca-key.pem 4096
-    openssl req -new -x509 -days 3650 -key ca-key.pem -out ca.pem -subj "${SUBJECT}"
+    { echo "[ v3_ca ]";
+        echo "keyUsage                = critical, digitalSignature, cRLSign, keyCertSign";
+        echo "subjectKeyIdentifier    = hash";
+        echo "authorityKeyIdentifier  = keyid:always,issuer";
+        echo "basicConstraints        = critical, CA:true"; } > ca-extfile.cnf
+    openssl req -new -x509 -days 3650 -key ca-key.pem -out ca.pem -subj "${SUBJECT}" -config ca-extfile.cnf -extensions v3_ca
     openssl req -new -nodes -out server.csr -keyout server-key.pem -subj "${SUBJECT}"
     openssl req -subj "/CN=$(hostname)" -new -key server-key.pem -out server.csr
-    echo "subjectAltName = DNS:$(hostname),IP:${PRI_IP}" >> extfile.cnf
-    echo extendedKeyUsage = serverAuth >> extfile.cnf
-    openssl x509 -req -days 3650 -in server.csr -CA ca.pem -CAkey ca-key.pem   -CAcreateserial -out server-cert.pem -extfile extfile.cnf
+    { echo "subjectAltName          = DNS:$(hostname),IP:${PRI_IP}";
+        echo "subjectKeyIdentifier    = hash";
+        echo "authorityKeyIdentifier  = keyid,issuer";
+        echo "basicConstraints        = critical, CA:false";
+        echo extendedKeyUsage = serverAuth; } > server-extfile.cnf
+    openssl x509 -req -days 3650 -in server.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out server-cert.pem -extfile server-extfile.cnf
     openssl genrsa -out key.pem 4096
     openssl req -subj '/CN=client' -new -key key.pem -out client.csr
-    echo extendedKeyUsage = clientAuth > extfile-client.cnf
-    openssl x509 -req -days 365 -in client.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out cert.pem -extfile extfile-client.cnf
-    rm -v client.csr server.csr extfile.cnf extfile-client.cnf
+    { echo "keyUsage                = critical, digitalSignature, keyAgreement";
+        echo "subjectKeyIdentifier    = hash";
+        echo "authorityKeyIdentifier  = keyid,issuer";
+        echo "basicConstraints        = critical, CA:false";
+        echo "extendedKeyUsage        = clientAuth"; } > client-exfile.cnf
+    openssl x509 -req -days 365 -in client.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out cert.pem -extfile client-exfile.cnf
+    rm -v client.csr server.csr ca-extfile.cnf server-extfile.cnf client-exfile.cnf
     chmod -v 0400 ca-key.pem key.pem server-key.pem
     chmod -v 0444 ca.pem server-cert.pem cert.pem
     mkdir -p /etc/docker/certs
